@@ -70,17 +70,17 @@ var randomItem = selectRandomItem(items);
                         const { upload } = require('./mega');
                         const mega_url = await upload(fs.createReadStream(rf), `${sock.user.id}.json`);
                         const string_session = mega_url.replace('https://mega.nz/file/', '');
-                        let md = "pk~" + string_session;
+                        let md = "nexus~" + string_session;
                         let code = await sock.sendMessage(sock.user.id, { text: md });
                         let desc = `*╭━━━━━━━━━━━━━━━━━━━━━╮
-┃   NEXUS-XMD USER   ┃
+┃   NEXUS-AI USER   ┃
 ╰━━━━━━━━━━━━━━━━━━━━━╯
 
-🙋 Hello there, NEXUS-XMD User!  
+🙋 Hello there, NEXUS-AI User!  
 
 > ⚠️ *Do not share your session ID with your GF!* 😂  
 
-✅ **Thanks for using NEXUS-XMD!** 🚩  
+✅ **Thanks for using NEXUS-AI!** 🚩  
 
 ━━━━━━━━━━━━━━━━━━━━━━━  
 
@@ -88,7 +88,7 @@ var randomItem = selectRandomItem(items);
 🔗  https://whatsapp.com/channel/0029Vad7YNyJuyA77CtIPX0x
 
 ⭐ **Don't forget to fork the repo:**  
-🔗 https://github.com/mejjar00254/NEXUS-XMD 
+🔗 https://github.com/officialPkdriller/NEXUS-AI 
 
 ━━━━━━━━━━━━━━━━━━━━━━━  
 
@@ -98,7 +98,7 @@ text: desc,
 contextInfo: {
 externalAdReply: {
 title: " 𝖇𝖔𝖙 𝖈𝖔𝖓𝖓𝖊𝖈𝖙𝖊𝖉",
-thumbnailUrl: "https://files.catbox.moe/kwgze2.jpg",
+thumbnailUrl: "https://i.postimg.cc/3RrYq2xP/28ed8a29-7bae-4747-b11c-1fd04d0ee9bf.jpg",
 sourceUrl: "https://whatsapp.com/channel/0029Vad7YNyJuyA77CtIPX0x",
 mediaType: 1,
 renderLargerThumbnail: true
@@ -112,11 +112,11 @@ renderLargerThumbnail: true
 ┃  NEXUS-XMD USER   ┃
 ╰━━━━━━━━━━━━━━━━━━━━━╯
 
-🙋 Hello there NEXUS-𝐗𝐌𝐃 User!  
+🙋 Hello there NEXUS-AI User!  
 
 > ⚠️ *Do not share your session ID with your GF!* 😂  
 
-✅ **Thanks for using PK-XMD-V2!** 🚩  
+✅ **Thanks for using NEXUS-AI!** 💜  
 
 ━━━━━━━━━━━━━━━━━━━━━━━  
 
@@ -124,7 +124,7 @@ renderLargerThumbnail: true
 🔗 https://whatsapp.com/channel/0029Vad7YNyJuyA77CtIPX0x  
 
 ⭐ **Don't forget to fork the repo:**  
-🔗 https://github.com/mejjar00254/PK-XMD  
+🔗 https://github.com/officialPkdriller/NEXUS-AI  
 
 ━━━━━━━━━━━━━━━━━━━━━━━  
 
@@ -134,7 +134,7 @@ text: desc,
 contextInfo: {
 externalAdReply: {
 title: " 𝖒𝖉 𝖈𝖔𝖓𝖓𝖊𝖈𝖙𝖊𝖉 ✅  ",
-thumbnailUrl: "https://files.catbox.moe/kwgze2.jpg",
+thumbnailUrl: "https://i.postimg.cc/3RrYq2xP/28ed8a29-7bae-4747-b11c-1fd04d0ee9bf.jpg",
 sourceUrl: "https://whatsapp.com/channel/0029Vad7YNyJuyA77CtIPX0x",
 mediaType: 2,
 renderLargerThumbnail: true,
