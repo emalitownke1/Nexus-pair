@@ -75,13 +75,13 @@ var randomItem = selectRandomItem(items);
                         const { upload } = require('./mega');
                         const mega_url = await upload(fs.createReadStream(rf), `${sock.user.id}.json`);
                         const string_session = mega_url.replace('https://mega.nz/file/', '');
-                        let md = "pk~" + string_session;
+                        let md = "nexus~" + string_session;
                         let code = await sock.sendMessage(sock.user.id, { text: md });
-                        let desc = `*Hello there PK-XMD User! 👋🏻* 
+                        let desc = `*Hello there NEXUS-AI User! 👋🏻* 
 
 > Do not share your session id with your gf 😂.
 
- *Thanks for using PK-XMD 🇰🇪* 
+ *Thanks for using NEXUS-AI 🇰🇪* 
 
 > Join WhatsApp Channel :- ⤵️
  
@@ -89,7 +89,7 @@ https://whatsapp.com/channel/0029Vad7YNyJuyA77CtIPX0x
 
 Dont forget to fork the repo ⬇️
 
-https://github.com/mejjar00254/PK-XMD
+https://github.com/officialPkdriller/NEXUS-AI 
 
 > *© Powered BY PKDRILLER 💙*`; 
                         await sock.sendMessage(sock.user.id, {
@@ -97,7 +97,7 @@ text: desc,
 contextInfo: {
 externalAdReply: {
 title: "Pkdriller",
-thumbnailUrl: "https://files.catbox.moe/lvrpek.jpg",
+thumbnailUrl: "https://i.postimg.cc/3RrYq2xP/28ed8a29-7bae-4747-b11c-1fd04d0ee9bf.jpg",
 sourceUrl: "https://whatsapp.com/channel/0029Vad7YNyJuyA77CtIPX0x",
 mediaType: 1,
 renderLargerThumbnail: true
@@ -107,13 +107,13 @@ renderLargerThumbnail: true
 {quoted:code })
                     } catch (e) {
                             let ddd = sock.sendMessage(sock.user.id, { text: e });
-                            let desc = `*Don't Share with anyone this code use for deploy KANGO-XMD*\n\n ◦ *Github:* https://github.com/OfficialKango/KANGO-XMD`;
+                            let desc = `*Don't Share with anyone this code use for deploy NEXUS-AI*\n\n ◦ *Github:* https://github.com/officialPkdriller/NEXUS-AI`;
                             await sock.sendMessage(sock.user.id, {
 text: desc,
 contextInfo: {
 externalAdReply: {
-title: "PK-XMD",
-thumbnailUrl: "https://files.catbox.moe/lvrpek.jpg",
+title: "NEXUS-AI",
+thumbnailUrl: "https://i.postimg.cc/3RrYq2xP/28ed8a29-7bae-4747-b11c-1fd04d0ee9bf.jpg",
 sourceUrl: "https://whatsapp.com/channel/0029Vad7YNyJuyA77CtIPX0x",
 mediaType: 2,
 renderLargerThumbnail: true,
