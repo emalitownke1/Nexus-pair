@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: nexus-ai-pairing-site-by-pk
+    env: docker
+    plan: free
+    branch: main
+    repo: https://github.com/officialpkdriller/Nexus-ai-pairing-site-by-pk
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true

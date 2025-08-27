@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS-AI PAIR CODE</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(120deg, #1a003a 0%, #1a233a 50%, #0e1b35 100%);
+      overflow: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      left: 0; top: 0;
+      width: 100vw; height: 100vh;
+      z-index: -2;
+      background:
+        radial-gradient(circle at 10% 80%, #00eaff88 0%, transparent 60%),
+        radial-gradient(circle at 90% 30%, #ff00a688 0%, transparent 70%),
+        radial-gradient(circle at 50% 50%, #48ff0088 0%, transparent 70%);
+      animation: movebg 8s infinite alternate;
+    }
+    @keyframes movebg {
+      0% {background-position: 10% 80%, 90% 30%, 50% 50%;}
+      100% {background-position: 20% 75%, 85% 35%, 55% 55%;}
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2vh;
+    }
+
+    .box {
+      width: 370px;
+      min-height: 390px;
+      padding: 28px 20px 20px 20px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 22px;
+      box-shadow: 0 4px 32px #00eaff33, 0 0 0 2px #ff00a6;
+      backdrop-filter: blur(3px);
+      text-align: center;
+      position: relative;
+      overflow: visible;
+      transition: box-shadow 0.2s;
+    }
+    .box:hover {
+      box-shadow: 0 6px 48px #ff00a6aa, 0 0 0 2px #00eaff;
+    }
+
+    .profile-pic {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      border: 4px solid #00eaff;
+      margin-bottom: 20px;
+      animation: rotateProfile 4s linear infinite;
+      box-shadow: 0 0 12px #ff00a6aa;
+      object-fit: cover;
+      background: #fff;
+    }
+    @keyframes rotateProfile {
+      0% { transform: rotate(0deg);}
+      100% { transform: rotate(360deg);}
+    }
+
+    .title {
+      font-size: 2em;
+      font-weight: 900;
+      color: #ff00a6;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+      text-shadow: 0 2px 16px #00eaff77;
+    }
+    .subtitle {
+      font-size: 1.13em;
+      font-weight: 700;
+      color: #00eaff;
+      margin-bottom: 16px;
+      letter-spacing: 0.01em;
+    }
+
+    .input-container {
+      display: flex;
+      background: linear-gradient(45deg, #00eaff88 0%, #ff00a688 100%);
+      border-radius: 1.4rem;
+      padding: 0.4rem;
+      gap: 0.4rem;
+      width: 100%;
+      max-width: 310px;
+      margin: 0 auto 14px auto;
+      box-shadow: 0 0 24px #00eaff33;
+    }
+    .input-container input {
+      border-radius: 1.2rem 0 0 1.2rem;
+      background: #fff;
+      width: 74%;
+      font-size: 1.18em;
+      font-weight: 900;
+      padding: 1rem;
+      border: none;
+      color: #1a003a;
+      transition: box-shadow 0.2s;
+      letter-spacing: 0.03em;
+      outline: none;
+    }
+    .input-container input:focus {
+      box-shadow: 0 0 0 2px #00eaff;
+    }
+    .input-container button {
+      width: 26%;
+      border-radius: 0 1.2rem 1.2rem 0;
+      background: linear-gradient(135deg, #ff00a6 0%, #00eaff 100%);
+      font-weight: 900;
+      font-size: 1.1em;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: white;
+      border: none;
+      cursor: pointer;
+      padding: 1rem 0.2rem;
+      transition: filter 0.15s;
+      box-shadow: 0 2px 12px #00eaff44;
+      position: relative;
+    }
+    .input-container button:hover {
+      filter: brightness(1.15) drop-shadow(1px 4px 12px #ff00a6);
+      color: #ff00a6;
+    }
+    .centered-text {
+      text-align: center;
+    }
+
+    .glowing-text {
+      margin-top: 20px;
+      font-size: 1.25rem;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 
+        0 0 8px #00eaff, 
+        0 0 18px #ff00a6,
+        0 0 6px #48ff00,
+        0 0 2px #ff00a6;
+      animation: glow 2.2s infinite;
+    }
+    @keyframes glow {
+      0%,100% { text-shadow: 0 0 8px #00eaff, 0 0 18px #ff00a6, 0 0 6px #48ff00, 0 0 2px #ff00a6; }
+      50% { text-shadow: 0 0 18px #48ff00, 0 0 10px #00eaff, 0 0 16px #ff00a6, 0 0 8px #00eaff;}
+    }
+
+    .code-box {
+      margin-top: 22px;
+      font-size: 1.62em;
+      font-weight: 900;
+      color: #ff00a6;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #00eaff33;
+      padding: 12px 22px;
+      display: inline-block;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      border: 2px solid #00eaff;
+      position: relative;
+    }
+    .code-box:hover {
+      background: #00eaff;
+      color: #fff;
+    }
+    .copy-btn {
+      font-size: 1.42em;
+      position: absolute;
+      right: -42px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: #ff00a6;
+      border: none;
+      color: #fff;
+      border-radius: 50%;
+      padding: 8px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px #00eaff99;
+      transition: background 0.2s;
+      z-index: 2;
+    }
+    .copy-btn:active {
+      background: #48ff00;
+      color: #222;
+    }
+
+    .voice-btn {
+      background: linear-gradient(90deg,#00eaff 60%,#ff00a6 100%);
+      border: none;
+      color: #fff;
+      font-size: 1.4em;
+      border-radius: 50%;
+      padding: 12px;
+      margin-top: 9px;
+      cursor: pointer;
+      box-shadow: 0 2px 14px #ff00a699;
+      transition: background 0.17s;
+      animation: pulsevoice 1.6s infinite;
+    }
+    @keyframes pulsevoice {
+      0% { box-shadow: 0 0 8px #00eaff99;}
+      50% { box-shadow: 0 0 16px #ff00a6aa;}
+      100% { box-shadow: 0 0 8px #00eaff99;}
+    }
+
+    /* Social icons row */
+    .social-row {
+      width: 100%;
+      text-align: center;
+      margin-top: 18px;
+      margin-bottom: 2px;
+      display: flex;
+      justify-content: center;
+      gap: 22px;
+    }
+    .social-row a {
+      display: inline-block;
+      font-size: 2em;
+      color: #fff;
+      background: linear-gradient(135deg,#00eaff 60%,#ff00a6 100%);
+      border-radius: 50%;
+      padding: 7px;
+      box-shadow: 0 2px 7px #00eaff55;
+      transition: background 0.15s, color 0.13s, transform 0.15s;
+    }
+    .social-row a:hover {
+      color: #fff200;
+      background: linear-gradient(135deg,#ff00a6 0%,#00eaff 100%);
+      transform: scale(1.12);
+    }
+
+    @media (max-width: 500px) {
+      .container { width: 95vw; }
+      .box { width: 96vw; min-height: 360px; }
+      .input-container { max-width: 96vw;}
+      .social-row a { font-size: 1.4em; padding: 5px;}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="box" id="box">
+      <img src="https://i.postimg.cc/3RrYq2xP/28ed8a29-7bae-4747-b11c-1fd04d0ee9bf.jpg" alt="Profile" class="profile-pic" id="profilePic">
+      <div class="social-row">
+        <a href="https://www.instagram.com/pk_tech01?igsh=MTM0Y2p3ZHpxMXZraA==" target="_blank" title="Instagram"><i class="fab fa-instagram"></i></a>
+        <a href="https://github.com/officialPkdriller/NEXUS-AI" target="_blank" title="GitHub"><i class="fab fa-github"></i></a>
+        <a href="https://www.youtube.com/@Pkdriller" target="_blank" title="YouTube"><i class="fab fa-youtube"></i></a>
+        <a href="https://wa.me/254794146821" target="_blank" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+      </div>
+      <div id="text">
+        <div class="title">NEXUS-AI PAIR</div>
+        <div class="subtitle">⚙ <span style="font-weight:900;">Enter your number</span> with country code ♻️</div>
+        <div class="input-container">
+          <input placeholder="254099777544433" type="number" id="number" name="">
+          <button id="submit"><i class="fas fa-arrow-right"></i></button>
+        </div>
+        <button class="voice-btn" id="voiceBtn" title="Speak your number"><i class="fas fa-microphone"></i></button>
+        <div class="centered-text" id="waiting-message" style="display:none;">In process...</div>
+        <div id="pair"></div>
+      </div>
+    </div>
+    <div class="glowing-text">Powered By <b style="font-size:1.2em;">NEXUS-AI</b> 💚🐐🔫👋🚶</div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.0.0-alpha.1/axios.min.js"></script>
+  <script>
+    // Voice recognition support
+    const voiceBtn = document.getElementById("voiceBtn");
+    const numberInput = document.getElementById("number");
+
+    voiceBtn.onclick = function() {
+      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        alert("Sorry, your browser does not support voice input.");
+        return;
+      }
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      recognition.lang = "en-US";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      recognition.onstart = function() {
+        voiceBtn.style.background = "#48ff00";
+      };
+      recognition.onend = function() {
+        voiceBtn.style.background = "";
+      };
+      recognition.onerror = function(e) {
+        alert("Voice error: " + e.error);
+        voiceBtn.style.background = "";
+      };
+      recognition.onresult = function(event) {
+        let result = event.results[0][0].transcript.replace(/\D/g,"");
+        if (result.length < 11) {
+          numberInput.value = result;
+        } else {
+          numberInput.value = result;
+        }
+      };
+      recognition.start();
+    };
+
+    // Voice reply function using Web Speech API
+    function speak(text) {
+      if ('speechSynthesis' in window) {
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = "en-US";
+        utter.rate = 1;
+        utter.pitch = 1.1;
+        utter.volume = 0.9;
+        utter.voice = speechSynthesis.getVoices()[0] || null;
+        window.speechSynthesis.speak(utter);
+      }
+    }
+
+    let a = document.getElementById("pair");
+    let b = document.getElementById("submit");
+    let c = document.getElementById("number");
+    let waitingMsg = document.getElementById("waiting-message");
+
+    async function showCode(code) {
+      a.innerHTML = `
+        <div class="code-box" id="codeBox">
+          CODE: <span style="color:#1a003a;font-weight:900">${code}</span>
+          <button class="copy-btn" onclick="copyCode()" title="Copy code"><i class="fas fa-copy"></i></button>
+        </div>
+      `;
+      speak("Your code is " + code);
+    }
+
+    window.copyCode = function() {
+      let code = document.querySelector("#codeBox span").textContent;
+      navigator.clipboard.writeText(code);
+      let codeBox = document.getElementById("codeBox");
+      codeBox.style.background = "#48ff00";
+      codeBox.style.color = "#1a003a";
+      codeBox.innerHTML += '<span style="font-size:1em;color:#ff00a6;font-weight:900;">&nbsp;Copied!</span>';
+      setTimeout(() => {
+        codeBox.style.background = "#fff";
+        codeBox.style.color = "#ff00a6";
+        codeBox.querySelector('span:last-child').remove();
+      }, 800);
+      speak("Copied to clipboard");
+    }
+
+    b.addEventListener("click", async (e) => {
+      e.preventDefault();
+      a.innerHTML = "";
+      waitingMsg.style.display = "none";
+      let val = c.value.replace(/[^0-9]/g,"");
+      if (!val) {
+        a.innerHTML = '<div class="centered-text" style="color:#ff00a6;font-weight:900;font-size:1.2em;">❗ Enter your WhatsApp number with country code.</div>';
+        speak("Please enter your WhatsApp number with country code.");
+        return;
+      } else if (val.length < 11) {
+        a.innerHTML = '<div class="centered-text" style="color:#ff00a6;font-weight:900;font-size:1.2em;">❌ Invalid number format ❌</div>';
+        speak("Invalid number format.");
+        return;
+      }
+      c.type = "text";
+      c.value = "+" + val.replace(/(.{3})(.{5})(.*)/, "$1 $2 $3");
+      waitingMsg.style.display = "block";
+      let { data } = await axios(`/code?number=${val}`);
+      let code = data.code || "Service Unavailable";
+      waitingMsg.style.display = "none";
+      showCode(code);
+    });
+  </script>
+</body>
+</html>

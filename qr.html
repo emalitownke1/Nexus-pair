@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS-AI QR SCANNER</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&family=Montserrat:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: "Outfit", "Montserrat", Arial, sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1e0038 0%, #1a233a 40%, #0e1b35 100%);
+            animation: gradient 12s ease-in-out infinite;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        @keyframes gradient {
+            0% {background-position: 0% 50%;}
+            50% {background-position: 100% 50%;}
+            100% {background-position: 0% 50%;}
+        }
+        /* Animated live background circles */
+        body::before, body::after {
+            content: "";
+            position: fixed;
+            left: 0; top: 0;
+            width: 100vw; height: 100vh;
+            z-index: -2;
+            pointer-events: none;
+        }
+        body::before {
+            background: radial-gradient(circle at 20% 80%, #00eaff55 0%, transparent 50%),
+                        radial-gradient(circle at 90% 30%, #ff00a655 0%, transparent 60%);
+            animation: movebg1 10s infinite alternate;
+        }
+        body::after {
+            background: radial-gradient(circle at 50% 50%, #48ff0055 0%, transparent 60%);
+            animation: movebg2 14s infinite alternate;
+        }
+        @keyframes movebg1 {
+            0% {background-position: 20% 80%, 90% 30%;}
+            100% {background-position: 25% 75%, 85% 35%;}
+        }
+        @keyframes movebg2 {
+            0% {background-position: 50% 50%;}
+            100% {background-position: 55% 55%;}
+        }
+        .bg {
+            width: 100vw;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #content {
+            display: flex;
+            flex-direction: column;
+            width: 25rem;
+            max-width: 95vw;
+            text-align: center;
+            background: rgba(0,0,0,0.87);
+            border-radius: 18px;
+            padding: 1.4rem 1.1rem 1.6rem 1.1rem;
+            box-shadow: 0 4px 32px #00eaff44, 0 0 0 2px #ff00a6;
+            backdrop-filter: blur(5px);
+            position: relative;
+        }
+        #QR-content img {
+            border-radius: 10px;
+            width: 20rem;
+            max-width: 80vw;
+            box-shadow: 0 0 18px #ff00a6bb, 0 4px 34px #00eaff44;
+            border: 4px solid #00eaff;
+        }
+        #title-container {
+            padding: 1rem 1rem 0 1rem;
+            color: #fff;
+            font-weight: 900;
+            margin-bottom: 0.7rem;
+        }
+        #main {
+            font-size: 2em;
+            font-weight: 900;
+            margin-bottom: 0.1em;
+            color: #ff00a6;
+            letter-spacing: 0.08em;
+            text-shadow: 0 2px 18px #00eaff99;
+        }
+        #legend {
+            color: #00eaff;
+            font-size: 1.13em;
+            font-weight: 700;
+            margin-top: 0.1em;
+        }
+        #description-container {
+            padding: 0 1.3rem 0 1.3rem;
+            color: #fff;
+            margin-bottom: 2rem;
+        }
+        #progressBar {
+            width: 85%;
+            height: 16px;
+            margin-top: 12px;
+            accent-color: #ff00a6;
+        }
+        .reload-button {
+            display: inline-block;
+            padding: 12px 32px;
+            background: linear-gradient(90deg, #00eaff 60%, #ff00a6 100%);
+            color: #fff;
+            font-weight: bold;
+            font-size: 1.12em;
+            letter-spacing: 0.05em;
+            text-decoration: none;
+            border-radius: 7px;
+            border: none;
+            margin-top: 10px;
+            box-shadow: 0 3px 18px #00eaff33;
+            transition: background 0.3s, color 0.2s, box-shadow 0.2s;
+        }
+        .reload-button:hover {
+            background: linear-gradient(90deg, #ff00a6 0%, #00eaff 100%);
+            color: #fff200;
+            box-shadow: 0 4px 28px #ff00a6bb;
+        }
+        /* Social icons row */
+        .social-row {
+            width: 100%;
+            text-align: center;
+            margin-top: 18px;
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: center;
+            gap: 22px;
+        }
+        .social-row a {
+            display: inline-block;
+            font-size: 2em;
+            color: #fff;
+            background: linear-gradient(135deg,#00eaff 60%,#ff00a6 100%);
+            border-radius: 50%;
+            padding: 7px;
+            box-shadow: 0 2px 7px #00eaff55;
+            transition: background 0.15s, color 0.13s, transform 0.15s;
+        }
+        .social-row a:hover {
+            color: #fff200;
+            background: linear-gradient(135deg,#ff00a6 0%,#00eaff 100%);
+            transform: scale(1.12);
+        }
+        /* Rotating profile pic */
+        .profile-pic {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            border: 4px solid #ff00a6;
+            margin-bottom: 8px;
+            animation: rotateProfile 3s linear infinite;
+            object-fit: cover;
+            box-shadow: 0 0 12px #00eaffaa;
+            background: #fff;
+        }
+        @keyframes rotateProfile {
+            0% { transform: rotate(0deg);}
+            100% { transform: rotate(360deg);}
+        }
+        /* Glowing text */
+        .glowing-text {
+            margin-top: 18px;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 
+                0 0 8px #00eaff, 
+                0 0 18px #ff00a6,
+                0 0 6px #48ff00,
+                0 0 2px #ff00a6;
+            animation: glow 2.2s infinite;
+            letter-spacing: 0.03em;
+        }
+        @keyframes glow {
+            0%,100% { text-shadow: 0 0 8px #00eaff, 0 0 18px #ff00a6, 0 0 6px #48ff00, 0 0 2px #ff00a6; }
+            50% { text-shadow: 0 0 18px #48ff00, 0 0 10px #00eaff, 0 0 16px #ff00a6, 0 0 8px #00eaff;}
+        }
+        @media (max-width: 500px) {
+            #content { width: 97vw; max-width: 99vw; padding: 0.8rem; }
+            #QR-content img { width: 95vw; }
+            .profile-pic { width: 52px; height: 52px; }
+            .social-row a { font-size: 1.3em; padding: 5px;}
+        }
+    </style>
+    <script>
+        // Progress bar timer for QR expiry
+        var timeleft = 30;
+        var downloadTimer = setInterval(function () {
+            if (timeleft <= 0) {
+                clearInterval(downloadTimer);
+                document.getElementById("progressBar").remove();
+                document.getElementById("main").innerHTML = "QR Expired! Please reload";
+                document.getElementById("legend").innerHTML = "";
+            }
+            document.getElementById("progressBar").value = 30 - timeleft;
+            timeleft -= 1;
+        }, 1000);
+    </script>
+</head>
+<body>
+<div class="bg">
+    <div id="content">
+        <img src="https://i.postimg.cc/3RrYq2xP/28ed8a29-7bae-4747-b11c-1fd04d0ee9bf.jpg" alt="Profile" class="profile-pic">
+        <div class="social-row">
+            <a href="https://www.instagram.com/pk_tech01?igsh=MTM0Y2p3ZHpxMXZraA==" target="_blank" title="Instagram"><i class="fab fa-instagram"></i></a>
+            <a href="https://github.com/officialPkdriller/NEXUS-AI" target="_blank" title="GitHub"><i class="fab fa-github"></i></a>
+            <a href="https://www.youtube.com/@Pkdriller" target="_blank" title="YouTube"><i class="fab fa-youtube"></i></a>
+            <a href="https://wa.me/254794146821" target="_blank" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+        </div>
+        <div id="QR-content">
+            <img id="qr-image" src="/server" alt="QR CODE">
+        </div>
+        <div id="title-container">
+            <h2 id="main">NEXUS-AI QR</h2>
+            <p class="legend" id="legend">Scan The QR Code</p>
+        </div>
+        <div id="description-container">
+            <p id="semi" class="legend"></p>
+            <progress value="0" max="30" id="progressBar"></progress>
+        </div>
+        <a href="javascript:history.go(0)" class="reload-button">Reload Page</a>
+        <div class="glowing-text">Powered By <b style="font-size:1.08em;">NEXUS-AI</b>🕵️🔫 pkdriller</div>
+    </div>
+</div>
+</body>
+</html>
