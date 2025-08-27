@@ -1,0 +1,29 @@
+name: Clear Main Branch
+
+on:
+  workflow_dispatch:
+
+jobs:
+  clear:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          ref: main
+          persist-credentials: true
+
+      - name: Remove all files except .github
+        run: |
+          shopt -s extglob dotglob
+          rm -rf !(.github)
+          echo "# Main branch cleared" > README.md
+
+      - name: Re-add preserved and new files
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add .
+          git commit -m "Clear main branch but keep .github"
+          git push origin main
