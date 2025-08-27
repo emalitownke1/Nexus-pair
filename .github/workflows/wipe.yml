@@ -7,18 +7,25 @@ jobs:
   wipe:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout repository (with full history)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # Important! Brings .git folder
 
       - name: Configure Git
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-      - name: Wipe repository
+      - name: Wipe repository (except .git and workflows)
         run: |
-          # Remove everything except .git folder
-          rm -rf .[^.]* * || true
+          # Delete everything except .git and .github/workflows
+          find . -mindepth 1 \
+            -not -path "./.git*" \
+            -not -path "./.github/workflows*" \
+            -exec rm -rf {} +
+          
+          # Add a clean README
           echo "# Clean Repository" > README.md
           git add -A
           git commit -m "Wipe repository clean"
