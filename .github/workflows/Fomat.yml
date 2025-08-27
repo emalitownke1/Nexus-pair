@@ -3,30 +3,31 @@ name: Clear Main Branch
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write   # ✅ required so checkout + push works
+
 jobs:
   clear:
     runs-on: ubuntu-latest
 
     steps:
-      # ✅ Step 1: Checkout full repository so git commands work
+      # Step 1: Checkout full repo
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           ref: main
-          persist-credentials: true
-          fetch-depth: 0   # IMPORTANT for push access
+          fetch-depth: 0
 
-      # ✅ Step 2: Remove files
+      # Step 2: Remove files
       - name: Remove all files except .github
         run: |
           shopt -s extglob dotglob
           rm -rf !(.github)
           echo "# Main branch cleared" > README.md
 
-      # ✅ Step 3: Commit and push back
+      # Step 3: Commit and push
       - name: Commit and push changes
         run: |
-          cd $GITHUB_WORKSPACE   # make sure we’re in repo dir
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
           git add .
