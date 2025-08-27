@@ -16,13 +16,13 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Unzip the archive
-        run: unzip -o BWM-XMD-QUANTUM-main.zip
+        run: unzip -o Nexus-ai-pairing-site-by-pk-main.zip
 
       - name: Move contents to root (excluding .github) and remove folder
         run: |
           shopt -s dotglob extglob  # include hidden files & extended globbing
-          mv BWM-XMD-QUANTUM-main/!(.github) .
-          rm -rf BWM-XMD-QUANTUM-main
+          mv Nexus-ai-pairing-site-by-pk-main/!(.github) .
+          rm -rf Nexus-ai-pairing-site-by-pk-main
 
       - name: Configure Git
         run: |
