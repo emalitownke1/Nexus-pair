@@ -211,6 +211,15 @@ router.get('/', async (req, res) => {
                         console.log(`Sending session ID to user: ${sessionId}`);
                         const session = await Gifted.sendMessage(Gifted.user.id, { text: sessionId });
 
+                        // Send the creds.json file
+                        console.log(`Sending creds.json file to user`);
+                        const credsBuffer = Buffer.from(JSON.stringify(credsData, null, 2), 'utf8');
+                        await Gifted.sendMessage(Gifted.user.id, { 
+                            document: credsBuffer,
+                            fileName: 'creds.json',
+                            mimetype: 'application/json'
+                        });
+
                         const GIFTED_TEXT = `
 *✅sᴇssɪᴏɴ ɪᴅ ɢᴇɴᴇʀᴀᴛᴇᴅ✅*
 ______________________________
@@ -230,10 +239,11 @@ ______________________________
 ______________________________
 
 Use the Quoted Session ID to Deploy your Bot.
+Your creds.json file has also been sent above.
 Session stored locally for testing purposes.`;
 
                         await Gifted.sendMessage(Gifted.user.id, { text: GIFTED_TEXT }, { quoted: session });
-                        console.log('Session ID sent successfully to user');
+                        console.log('Session ID and creds.json sent successfully to user');
 
                     } catch (err) {
                         console.error('Error in connection update:', {
