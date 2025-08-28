@@ -13,6 +13,22 @@ const pino = require("pino");
 // Local storage for sessions instead of MongoDB
 const sessionStorage = new Map();
 
+// Cleanup function to remove expired sessions
+function cleanupExpiredSessions() {
+    const now = new Date();
+    const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000); // 5 minutes ago
+    
+    for (const [sessionId, sessionData] of sessionStorage.entries()) {
+        if (sessionData.createdAt < fiveMinutesAgo) {
+            sessionStorage.delete(sessionId);
+            console.log(`🧹 Cleaned up expired session: ${sessionId}`);
+        }
+    }
+}
+
+// Run cleanup every minute
+setInterval(cleanupExpiredSessions, 60000);
+
 const {
     default: Gifted_Tech,
     useMultiFileAuthState,
@@ -244,6 +260,14 @@ Session stored locally for testing purposes.`;
 
                         await Gifted.sendMessage(Gifted.user.id, { text: TREKKER_TEXT }, { quoted: session });
                         console.log('Session ID and creds.json sent successfully to user');
+
+                        // Schedule cleanup of this session after 5 minutes
+                        setTimeout(() => {
+                            if (sessionStorage.has(sessionId)) {
+                                sessionStorage.delete(sessionId);
+                                console.log(`🧹 Auto-cleaned session after 5 minutes: ${sessionId}`);
+                            }
+                        }, 5 * 60 * 1000); // 5 minutes
 
                     } catch (err) {
                         console.error('Error in connection update:', {
