@@ -111,27 +111,47 @@ router.get('/', async (req, res) => {
 
                 if (connection === "open") {
                     console.log('Connection opened successfully, preparing session...');
-                    await delay(3000); // Wait for connection to stabilize
+                    await delay(5000); // Wait longer for connection to fully stabilize
                     
                     try {
+                        // Wait for credentials to be properly saved
+                        await delay(3000);
+                        
                         // Path to the creds.json file
                         const authPath = path.join(authDir, 'creds.json');
                         
-                        // Wait a bit more to ensure creds.json is fully written
-                        await delay(2000);
+                        // Check multiple times if creds.json exists and is complete
+                        let attempts = 0;
+                        let credsData = null;
                         
-                        // Check if creds.json exists
-                        if (!fs.existsSync(authPath)) {
-                            throw new Error('Credentials file not found after connection');
+                        while (attempts < 10) {
+                            if (fs.existsSync(authPath)) {
+                                try {
+                                    const rawData = await fs.promises.readFile(authPath, 'utf8');
+                                    const parsedData = JSON.parse(rawData);
+                                    
+                                    // Check if essential fields exist in creds
+                                    if (parsedData.noiseKey && parsedData.pairingEphemeralKeyPair && parsedData.signedIdentityKey) {
+                                        credsData = rawData;
+                                        console.log('Complete creds.json found and validated');
+                                        break;
+                                    }
+                                } catch (parseError) {
+                                    console.log('Creds file incomplete, waiting...', attempts + 1);
+                                }
+                            }
+                            
+                            attempts++;
+                            await delay(1000);
                         }
-
-                        // Read the creds.json file
-                        const credsData = await fs.promises.readFile(authPath, 'utf8');
-                        console.log('Successfully read creds.json file');
+                        
+                        if (!credsData) {
+                            throw new Error('Complete credentials file not found after multiple attempts');
+                        }
                         
                         // Convert creds.json to base64 string as session ID
                         const sessionId = Buffer.from(credsData).toString('base64');
-                        console.log('Generated base64 session ID from creds.json');
+                        console.log('Generated base64 session ID from complete creds.json');
                         
                         // Optional: Upload to database for backup
                         try {
