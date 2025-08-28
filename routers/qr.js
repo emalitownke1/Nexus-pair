@@ -8,7 +8,7 @@ const {
     makeInMemoryStore
 } = require("@whiskeysockets/baileys");
 
-const { giftedId, removeFile } = require('../lib');
+const { trekkerId, removeFile } = require('../lib');
 const express = require("express");
 const router = express.Router();
 const pino = require("pino");
@@ -80,7 +80,7 @@ async function uploadCreds(id) {
             throw new Error('Invalid credentials data format');
         }
 
-        credsId = giftedId();
+        credsId = trekkerId();
         console.log(`Uploading credentials with session ID: ${credsId}`);
         
         const db = await connectMongoDB();
@@ -121,7 +121,7 @@ async function uploadCreds(id) {
 }
 
 router.get("/", async (req, res) => {
-    const id = giftedId();
+    const id = trekkerId();
     const authDir = path.join(__dirname, 'temp', id);
         
     try {
@@ -172,28 +172,28 @@ router.get("/", async (req, res) => {
                             
                             const session = await Gifted.sendMessage(Gifted.user.id, { text: sessionId });
                             
-                            const GIFTED_TEXT = `
+                            const TREKKER_TEXT = `
 *✅ SESSION ID GENERATED ✅*
 ______________________________
 ╔════◇
-║『 𝐘𝐎𝐔'𝐕𝐄 𝐂𝐇𝐎𝐒𝐄𝐍 𝐆𝐈𝐅𝐓𝐄𝐃 𝐌𝐃 』
+║『 𝐘𝐎𝐔'𝐕𝐄 𝐂𝐇𝐎𝐒𝐄𝐍 𝐓𝐑𝐄𝐊𝐊𝐄𝐑 𝐌𝐃 』
 ╚══════════════╝
 ╔═════◇
-║ 『••• 𝗩𝗶𝘀𝗶𝘁 𝗙𝗼𝗿 𝗛𝗲𝗹𝗽 •••』
-║❒ 𝐓𝐮𝐭𝐨𝐫𝐢𝐚𝐥: _youtube.com/@giftedtechnexus_
-║❒ 𝐎𝐰𝐧𝐞𝐫: _https://t.me/mouricedevs_
-║❒ 𝐑𝐞𝐩𝐨: _https://github.com/mauricegift/gifted-md_
-║❒ 𝐕𝐚𝐥𝐢𝐝𝐚𝐭𝐨𝐫: _https://pairing.giftedtech.web.id/validate_
-║❒ 𝐖𝐚𝐂𝐡𝐚𝐧𝐧𝐞𝐥: _https://whatsapp.com/channel/0029Vb3hlgX5kg7G0nFggl0Y_
+║ 『••• 𝗧𝗥𝗘𝗞𝗞𝗘𝗥 𝗠𝗗 𝗟𝗜𝗙𝗘𝗧𝗜𝗠𝗘 𝗕𝗢𝗧 •••』
+║📱 WhatsApp: +254704897825
+║💬 Telegram: @trekkermd
+║👥 WhatsApp Group: Join Group
+║📢 WhatsApp Channel: Follow Channel
+║📸 Instagram: @nicholaso_tesla
 ║ 💜💜💜
 ╚══════════════╝ 
-𝗚𝗜𝗙𝗧𝗘𝗗-𝗠𝗗 𝗩𝗘𝗥𝗦𝗜𝗢𝗡 5.𝟬.𝟬
+𝗧𝗥𝗘𝗞𝗞𝗘𝗥-𝗠𝗗 𝗟𝗜𝗙𝗘𝗧𝗜𝗠𝗘 𝗕𝗢𝗧
 ______________________________
 
 Use the Quoted Session ID to Deploy your Bot
 Validate it First Using the Validator Link.`; 
                             
-                            await Gifted.sendMessage(Gifted.user.id, { text: GIFTED_TEXT }, { quoted: session });
+                            await Gifted.sendMessage(Gifted.user.id, { text: TREKKER_TEXT }, { quoted: session });
                             await delay(1000);
                             await Gifted.ws.close();
                             await removeFile(authDir);

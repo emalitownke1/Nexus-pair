@@ -47,7 +47,7 @@ app.listen(PORT, () => {
     console.log(`
 Deployment Successful!
 
- Gifted-Session-Server Running on http://localhost:` + PORT);
+ TREKKER-Session-Server Running on http://localhost:` + PORT);
 
     // Verify environment variables
     console.log('\n=== ENVIRONMENT VALIDATION ===');
