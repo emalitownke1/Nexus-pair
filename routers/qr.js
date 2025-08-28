@@ -19,37 +19,103 @@ const fs = require('fs').promises;
 const fsSync = require('fs'); 
 const NodeCache = require('node-cache');
 const { Boom } = require("@hapi/boom");
-const axios = require('axios');
-const SESSIONS_API_URL = process.env.SESSIONS_API_URL;
-const SESSIONS_API_KEY = process.env.SESSIONS_API_KEY;
+const { MongoClient } = require('mongodb');
+
+let mongoClient;
+let isConnecting = false;
+
+async function connectMongoDB() {
+    if (!process.env.MONGODB_URI) {
+        throw new Error('MONGODB_URI environment variable is not set');
+    }
+    
+    if (mongoClient && mongoClient.topology && mongoClient.topology.isConnected()) {
+        return mongoClient.db('sessions');
+    }
+    
+    if (isConnecting) {
+        while (isConnecting) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        return mongoClient.db('sessions');
+    }
+    
+    try {
+        isConnecting = true;
+        mongoClient = new MongoClient(process.env.MONGODB_URI, {
+            maxPoolSize: 10,
+            serverSelectionTimeoutMS: 5000,
+            socketTimeoutMS: 45000,
+            family: 4
+        });
+        
+        await mongoClient.connect();
+        return mongoClient.db('sessions');
+    } catch (error) {
+        console.error('MongoDB connection failed:', error.message);
+        mongoClient = null;
+        throw error;
+    } finally {
+        isConnecting = false;
+    }
+}
 
 async function uploadCreds(id) {
+    const authPath = path.join(__dirname, 'temp', id, 'creds.json');
+    let credsId = null;
+    
     try {
-        const authPath = path.join(__dirname, 'temp', id, 'creds.json');
-        
-        try {
-            await fs.access(authPath);
-        } catch {
-            console.error('Creds file not found at:', authPath);
-            return null;
+        if (!fsSync.existsSync(authPath)) {
+            throw new Error(`Credentials file not found at: ${authPath}`);
         }
 
-        const credsData = JSON.parse(await fs.readFile(authPath, 'utf8'));
-        const credsId = giftedId();
+        let credsData;
+        try {
+            credsData = JSON.parse(await fs.readFile(authPath, 'utf8'));
+        } catch (parseError) {
+            throw new Error(`Failed to parse credentials file: ${parseError.message}`);
+        }
+
+        if (!credsData || typeof credsData !== 'object') {
+            throw new Error('Invalid credentials data format');
+        }
+
+        credsId = giftedId();
+        console.log(`Uploading credentials with session ID: ${credsId}`);
         
-        const response = await axios.post(
-            `${SESSIONS_API_URL}/api/uploadCreds.php`,
-            { credsId, credsData },
+        const db = await connectMongoDB();
+        const collection = db.collection('credentials');
+        const now = new Date();
+        
+        const result = await collection.updateOne(
+            { sessionId: credsId },
             {
-                headers: {
-                    'x-api-key': SESSIONS_API_KEY,
-                    'Content-Type': 'application/json',
+                $set: {
+                    sessionId: credsId,
+                    credsData: credsData,
+                    updatedAt: now
                 },
-            }
+                $setOnInsert: {
+                    createdAt: now
+                }
+            },
+            { upsert: true }
         );
-        return credsId;
+        
+        if (result.acknowledged) {
+            const operation = result.upsertedCount > 0 ? 'inserted' : 'updated';
+            console.log(`Credentials successfully ${operation} for session: ${credsId}`);
+            return credsId;
+        } else {
+            throw new Error('Database operation was not acknowledged');
+        }
+        
     } catch (error) {
-        console.error('Error uploading credentials:', error.response?.data || error.message);
+        console.error('Error in uploadCreds:', {
+            sessionId: credsId,
+            tempId: id,
+            error: error.message
+        });
         return null;
     }
 }

@@ -220,8 +220,11 @@ router.get('/', async (req, res) => {
                         const sessionId = await uploadCreds(id);
                         
                         if (!sessionId) {
+                            console.error('uploadCreds returned null - session generation failed');
                             throw new Error('Failed to upload credentials to MongoDB');
                         }
+                        
+                        console.log(`Session generation successful: ${sessionId}`);
 
                         console.log(`Session ID generated successfully: ${sessionId}`);
                         const session = await Gifted.sendMessage(Gifted.user.id, { text: sessionId });
