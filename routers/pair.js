@@ -4,7 +4,7 @@ const {
 } = require('../lib'); 
 
 const express = require('express');
-const fs = require('fs'); 
+const fs = require('fs');
 const axios = require('axios');
 require('dotenv').config();
 const path = require('path');
@@ -26,13 +26,21 @@ async function uploadCreds(id) {
     try {
         const authPath = path.join(__dirname, 'temp', id, 'creds.json');
         
-        if (!fs.existsSync(authPath)) {
+        // Check if file exists using async method
+        try {
+            await fs.promises.access(authPath);
+        } catch {
             console.error('Creds file not found at:', authPath);
             return null;
         }
 
-        const credsData = JSON.parse(fs.readFileSync(authPath, 'utf8'));
+        // Add a small delay to ensure file is fully written
+        await delay(1000);
+
+        const credsData = JSON.parse(await fs.promises.readFile(authPath, 'utf8'));
         const credsId = giftedId();
+        
+        console.log('Uploading credentials with ID:', credsId);
         
         const response = await axios.post(
             `${SESSIONS_API_URL}/api/uploadCreds.php`,
@@ -42,8 +50,11 @@ async function uploadCreds(id) {
                     'x-api-key': SESSIONS_API_KEY,
                     'Content-Type': 'application/json',
                 },
+                timeout: 15000
             }
         );
+        
+        console.log('Upload response status:', response.status);
         return credsId;
     } catch (error) {
         console.error('Error uploading credentials:', error.response?.data || error.message);
@@ -96,14 +107,18 @@ router.get('/', async (req, res) => {
                 const { connection, lastDisconnect } = s;
 
                 if (connection === "open") {
+                    console.log('Connection opened, waiting before uploading credentials...');
                     await delay(5000);
                     
                     try {
+                        console.log('Attempting to upload credentials for ID:', id);
                         const sessionId = await uploadCreds(id);
                         if (!sessionId) {
+                            console.error('Failed to upload credentials - sessionId is null');
                             throw new Error('Failed to upload credentials');
                         }
 
+                        console.log('Successfully uploaded credentials, sessionId:', sessionId);
                         const session = await Gifted.sendMessage(Gifted.user.id, { text: sessionId });
 
                         const GIFTED_TEXT = `
