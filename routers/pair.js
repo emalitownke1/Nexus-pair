@@ -5,14 +5,22 @@ const {
 
 const express = require('express');
 const fs = require('fs'); 
-const axios = require('axios');
 require('dotenv').config();
 const path = require('path');
 let router = express.Router();
 const pino = require("pino");
 
-const SESSIONS_API_URL = process.env.SESSIONS_API_URL;
-const SESSIONS_API_KEY = process.env.SESSIONS_API_KEY;
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://Trekker:bQTfNbCZKmaHNLbZ@cluster0.yp1ye.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+const { MongoClient } = require('mongodb');
+
+let mongoClient;
+async function connectMongoDB() {
+    if (!mongoClient) {
+        mongoClient = new MongoClient(MONGODB_URI);
+        await mongoClient.connect();
+    }
+    return mongoClient.db('sessions');
+}
 
 const {
     default: Gifted_Tech,
@@ -34,19 +42,19 @@ async function uploadCreds(id) {
         const credsData = JSON.parse(fs.readFileSync(authPath, 'utf8'));
         const credsId = giftedId();
         
-        const response = await axios.post(
-            `${SESSIONS_API_URL}/api/uploadCreds.php`,
-            { credsId, credsData },
-            {
-                headers: {
-                    'x-api-key': SESSIONS_API_KEY,
-                    'Content-Type': 'application/json',
-                },
-            }
-        );
+        const db = await connectMongoDB();
+        const collection = db.collection('credentials');
+        
+        await collection.insertOne({
+            sessionId: credsId,
+            credsData: credsData,
+            createdAt: new Date(),
+            updatedAt: new Date()
+        });
+        
         return credsId;
     } catch (error) {
-        console.error('Error uploading credentials:', error.response?.data || error.message);
+        console.error('Error uploading credentials:', error.message);
         return null;
     }
 }
