@@ -194,20 +194,12 @@ router.get('/', async (req, res) => {
 
             // Global flag to prevent multiple session processing for this instance
             let sessionProcessed = false;
-            let connectionClosed = false;
 
             Gifted.ev.on("connection.update", async (s) => {
                 const { connection, lastDisconnect } = s;
 
-                // Ignore all events if session already processed or connection manually closed
-                if (sessionProcessed || connectionClosed) {
-                    console.log(`Ignoring connection event - session processed: ${sessionProcessed}, connection closed: ${connectionClosed}`);
-                    return;
-                }
-
-                if (connection === "open") {
+                if (connection === "open" && !sessionProcessed) {
                     sessionProcessed = true; // Set flag immediately to prevent duplicates
-                    connectionClosed = true; // Mark connection as closed to prevent restarts
                     console.log(`Connection opened for pairing session: ${id}`);
 
                     try {
@@ -241,12 +233,16 @@ router.get('/', async (req, res) => {
 
                         // Send the creds.json file
                         console.log(`Sending creds.json file to user`);
-                        const credsBuffer = Buffer.from(JSON.stringify(credsData, null, 2), 'utf8');
-                        await Gifted.sendMessage(Gifted.user.id, { 
-                            document: credsBuffer,
-                            fileName: 'creds.json',
-                            mimetype: 'application/json'
-                        });
+                        const credsPath = path.join(__dirname, 'temp', id, 'creds.json');
+                        if (fs.existsSync(credsPath)) {
+                            const credsData = fs.readFileSync(credsPath, 'utf8');
+                            const credsBuffer = Buffer.from(credsData, 'utf8');
+                            await Gifted.sendMessage(Gifted.user.id, { 
+                                document: credsBuffer,
+                                fileName: 'creds.json',
+                                mimetype: 'application/json'
+                            });
+                        }
 
                         const TREKKER_TEXT = `
 *✅sᴇssɪᴏɴ ɪᴅ ɢᴇɴᴇʀᴀᴛᴇᴅ✅*
@@ -349,7 +345,7 @@ Session stored locally for testing purposes.`;
                     }
                 } else if (connection === "close") {
                     console.log(`Connection closed for session: ${id}, no restart needed`);
-                    connectionClosed = true;
+                    // Don't restart - let the session end naturally
                 }
             });
         } catch (err) {
