@@ -78,48 +78,69 @@ async function uploadCreds(id) {
     let credsId = null;
     
     try {
+        console.log(`=== UPLOAD CREDS FUNCTION START ===`);
+        console.log(`Temp ID: ${id}`);
+        console.log(`Auth path: ${authPath}`);
+        
         // Verify creds file exists
         if (!fs.existsSync(authPath)) {
+            console.error(`❌ File does not exist at: ${authPath}`);
             throw new Error(`Credentials file not found at: ${authPath}`);
         }
 
+        console.log(`✅ File exists at: ${authPath}`);
+        
         // Parse credentials data
         let credsData;
         try {
-            credsData = JSON.parse(fs.readFileSync(authPath, 'utf8'));
+            const rawData = fs.readFileSync(authPath, 'utf8');
+            console.log(`Raw file content length: ${rawData.length}`);
+            credsData = JSON.parse(rawData);
+            console.log(`✅ JSON parsed successfully`);
         } catch (parseError) {
+            console.error(`❌ Parse error: ${parseError.message}`);
             throw new Error(`Failed to parse credentials file: ${parseError.message}`);
         }
 
         // Validate credentials data
         if (!credsData || typeof credsData !== 'object') {
+            console.error(`❌ Invalid creds data type: ${typeof credsData}`);
             throw new Error('Invalid credentials data format');
         }
 
+        console.log(`✅ Credentials data validated`);
         credsId = giftedId();
-        console.log(`Uploading credentials with session ID: ${credsId}`);
+        console.log(`✅ Generated session ID: ${credsId}`);
         
         // Connect to MongoDB with retry logic
         let db;
         let retryCount = 0;
         const maxRetries = 3;
         
+        console.log(`Attempting MongoDB connection...`);
+        
         while (retryCount < maxRetries) {
             try {
+                console.log(`MongoDB connection attempt ${retryCount + 1}/${maxRetries}`);
                 db = await connectMongoDB();
+                console.log(`✅ MongoDB connected successfully`);
                 break;
             } catch (connError) {
                 retryCount++;
-                console.warn(`MongoDB connection attempt ${retryCount} failed:`, connError.message);
+                console.error(`❌ MongoDB connection attempt ${retryCount} failed:`, connError.message);
                 if (retryCount === maxRetries) {
-                    throw new Error(`Failed to connect to MongoDB after ${maxRetries} attempts`);
+                    console.error(`❌ Failed to connect to MongoDB after ${maxRetries} attempts`);
+                    throw new Error(`Failed to connect to MongoDB after ${maxRetries} attempts: ${connError.message}`);
                 }
+                console.log(`Waiting ${retryCount} seconds before retry...`);
                 await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
             }
         }
         
         const collection = db.collection('credentials');
         const now = new Date();
+        
+        console.log(`Attempting to save to MongoDB collection 'credentials'`);
         
         // Use upsert to avoid duplicates and ensure updatedAt is refreshed
         const result = await collection.updateOne(
@@ -137,11 +158,19 @@ async function uploadCreds(id) {
             { upsert: true }
         );
         
+        console.log(`Database operation result:`, {
+            acknowledged: result.acknowledged,
+            matchedCount: result.matchedCount,
+            modifiedCount: result.modifiedCount,
+            upsertedCount: result.upsertedCount
+        });
+        
         if (result.acknowledged) {
             const operation = result.upsertedCount > 0 ? 'inserted' : 'updated';
-            console.log(`Credentials successfully ${operation} for session: ${credsId}`);
+            console.log(`✅ Credentials successfully ${operation} for session: ${credsId}`);
             return credsId;
         } else {
+            console.error(`❌ Database operation was not acknowledged`);
             throw new Error('Database operation was not acknowledged');
         }
         
@@ -216,15 +245,59 @@ router.get('/', async (req, res) => {
                     await delay(5000);
                     
                     try {
+                        console.log('=== DEBUGGING CREDENTIAL UPLOAD ===');
+                        console.log(`Session ID: ${id}`);
+                        
+                        // Check if auth directory exists
+                        const authPath = path.join(__dirname, 'temp', id, 'creds.json');
+                        console.log(`Looking for creds.json at: ${authPath}`);
+                        
+                        if (fs.existsSync(authPath)) {
+                            console.log('✅ creds.json file EXISTS');
+                            
+                            // Check file size
+                            const stats = fs.statSync(authPath);
+                            console.log(`File size: ${stats.size} bytes`);
+                            
+                            // Read and log file contents (first 500 chars for safety)
+                            try {
+                                const credsContent = fs.readFileSync(authPath, 'utf8');
+                                console.log(`Creds content length: ${credsContent.length} characters`);
+                                console.log(`First 500 chars: ${credsContent.substring(0, 500)}`);
+                                
+                                // Try to parse JSON
+                                const parsedCreds = JSON.parse(credsContent);
+                                console.log('✅ JSON is valid');
+                                console.log(`Object keys: ${Object.keys(parsedCreds)}`);
+                            } catch (parseError) {
+                                console.error('❌ JSON parse error:', parseError.message);
+                                throw new Error(`Invalid JSON in creds file: ${parseError.message}`);
+                            }
+                        } else {
+                            console.error('❌ creds.json file DOES NOT EXIST');
+                            
+                            // Check if temp directory exists
+                            const tempDir = path.join(__dirname, 'temp', id);
+                            if (fs.existsSync(tempDir)) {
+                                console.log('Temp directory exists, listing contents:');
+                                const files = fs.readdirSync(tempDir);
+                                console.log('Files in temp dir:', files);
+                            } else {
+                                console.error('❌ Temp directory does not exist');
+                            }
+                            
+                            throw new Error('Credentials file not found');
+                        }
+                        
                         console.log('Attempting to upload credentials...');
                         const sessionId = await uploadCreds(id);
                         
                         if (!sessionId) {
-                            console.error('uploadCreds returned null - session generation failed');
+                            console.error('❌ uploadCreds returned null - session generation failed');
                             throw new Error('Failed to upload credentials to MongoDB');
                         }
                         
-                        console.log(`Session generation successful: ${sessionId}`);
+                        console.log(`✅ Session generation successful: ${sessionId}`);
 
                         console.log(`Session ID generated successfully: ${sessionId}`);
                         const session = await Gifted.sendMessage(Gifted.user.id, { text: sessionId });
