@@ -29,12 +29,26 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Add endpoint to check stored sessions (for debugging)
+app.get('/api/sessions', (req, res) => {
+    const { getSessionStorage } = require('./lib');
+    const sessionStorage = getSessionStorage();
+    const sessions = Array.from(sessionStorage.keys());
+    res.json({ 
+        total: sessions.length, 
+        sessions: sessions.map(id => ({ 
+            id, 
+            createdAt: sessionStorage.get(id)?.createdAt 
+        }))
+    });
+});
+
 app.listen(PORT, () => {
     console.log(`
 Deployment Successful!
 
  Gifted-Session-Server Running on http://localhost:` + PORT);
-    
+
     // Verify environment variables
     console.log('\n=== ENVIRONMENT VALIDATION ===');
     console.log(`MONGODB_URI configured: ${!!process.env.MONGODB_URI}`);
