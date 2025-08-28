@@ -16,13 +16,13 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Unzip the archive
-        run: unzip -o giftedmdV2-session-generator-main.zip
+        run: unzip -o Pk-pairing-site-main.zip
 
       - name: Move contents to root (excluding .github) and remove folder
         run: |
           shopt -s dotglob extglob  # include hidden files & extended globbing
-          mv giftedmdV2-session-generator-main/!(.github) .
-          rm -rf giftedmdV2-session-generator-main
+          mv Pk-pairing-site-main/!(.github) .
+          rm -rf Pk-pairing-site-main
       - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
