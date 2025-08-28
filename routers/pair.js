@@ -261,13 +261,29 @@ Session stored locally for testing purposes.`;
                         await Gifted.sendMessage(Gifted.user.id, { text: TREKKER_TEXT }, { quoted: session });
                         console.log('Session ID and creds.json sent successfully to user');
 
-                        // Schedule cleanup of this session after 5 minutes
-                        setTimeout(() => {
-                            if (sessionStorage.has(sessionId)) {
-                                sessionStorage.delete(sessionId);
-                                console.log(`🧹 Auto-cleaned session after 5 minutes: ${sessionId}`);
+                        // Immediate cleanup after messages are sent
+                        console.log('🧹 Starting immediate cleanup...');
+                        
+                        // Clear session from storage immediately
+                        if (sessionStorage.has(sessionId)) {
+                            sessionStorage.delete(sessionId);
+                            console.log(`🧹 Immediately cleared session: ${sessionId}`);
+                        }
+
+                        // Clear credentials file immediately
+                        try {
+                            const credsPath = path.join(__dirname, 'temp', id, 'creds.json');
+                            if (fs.existsSync(credsPath)) {
+                                fs.unlinkSync(credsPath);
+                                console.log(`🧹 Cleared creds.json file: ${credsPath}`);
                             }
-                        }, 5 * 60 * 1000); // 5 minutes
+                        } catch (cleanupError) {
+                            console.warn('Error clearing creds file:', cleanupError.message);
+                        }
+
+                        // Wait a moment to ensure messages are delivered, then close connection
+                        await delay(2000);
+                        console.log('🧹 Closing connection and preparing for next session...');
 
                     } catch (err) {
                         console.error('Error in connection update:', {
@@ -287,26 +303,40 @@ Session stored locally for testing purposes.`;
                             console.error('Failed to send error message to user:', msgError.message);
                         }
                     } finally {
-                        console.log(`Cleaning up connection for session: ${id}`);
-                        await delay(100);
-
+                        console.log(`🧹 Final cleanup for session: ${id}`);
+                        
+                        // Force close connection immediately
                         try {
-                            if (Gifted.ws && Gifted.ws.readyState === 1) {
-                                await Gifted.ws.close();
+                            if (Gifted.ws) {
+                                Gifted.ws.close();
+                                console.log('🔌 WebSocket connection closed');
+                            }
+                            if (Gifted.end) {
+                                await Gifted.end();
+                                console.log('🔌 Baileys connection ended');
                             }
                         } catch (closeError) {
-                            console.warn('Error closing WebSocket:', closeError.message);
+                            console.warn('Error closing connection:', closeError.message);
                         }
 
-                        // Final cleanup of auth directory (backup cleanup)
+                        // Complete cleanup of auth directory
                         try {
                             if (fs.existsSync(authDir)) {
                                 await removeFile(authDir);
-                                console.log(`Final cleanup completed for: ${authDir}`);
+                                console.log(`🧹 Auth directory cleaned: ${authDir}`);
                             }
                         } catch (cleanupError) {
                             console.error('Error in final cleanup:', cleanupError.message);
                         }
+
+                        // Clear any remaining session data
+                        const tempSessionId = sessionStorage.get(id);
+                        if (tempSessionId) {
+                            sessionStorage.delete(id);
+                            console.log(`🧹 Cleared any remaining session data for: ${id}`);
+                        }
+
+                        console.log('✅ System ready for next pairing session');
                     }
                 } else if (connection === "close" && lastDisconnect?.error?.output?.statusCode !== 401) {
                     await delay(10000);
