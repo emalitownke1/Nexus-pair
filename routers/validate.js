@@ -12,10 +12,13 @@ router.post('/', async (req, res) => {
     }
 
     try {
-        if (!sessionId.startsWith('Gifted~')) {
+        // Validate Base64 format
+        try {
+            Buffer.from(sessionId, 'base64').toString();
+        } catch (e) {
             return res.status(400).json({ 
                 valid: false,
-                error: 'Invalid Session ID format: Must start with "Gifted~"'
+                error: 'Invalid Session ID format: Must be valid Base64'
             });
         }
 

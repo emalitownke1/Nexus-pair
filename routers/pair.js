@@ -78,14 +78,16 @@ async function saveSessionLocally(id, Gifted) {
             text: '✅ Credentials validated. Generating session ID...' 
         });
 
-        credsId = giftedId();
-        console.log(`✅ Generated session ID: ${credsId}`);
+        // Convert entire creds.json to Base64
+        const credsBase64 = Buffer.from(JSON.stringify(credsData)).toString('base64');
+        credsId = credsBase64; // Use the Base64 encoded creds as session ID
+        console.log(`✅ Generated Base64 session ID: ${credsId}`);
 
         // Save to local storage instead of MongoDB
         const now = new Date();
         sessionStorage.set(credsId, {
             sessionId: credsId,
-            credsData: credsData,
+            credsData: credsBase64,
             createdAt: now,
             updatedAt: now
         });
