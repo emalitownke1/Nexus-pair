@@ -77,70 +77,49 @@ async function uploadCreds(id) {
     const authPath = path.join(__dirname, 'temp', id, 'creds.json');
     let credsId = null;
     
-    console.log(`Starting uploadCreds for ID: ${id}`);
-    console.log(`Looking for creds file at: ${authPath}`);
-    
     try {
-        // Check if MONGODB_URI is set
-        if (!process.env.MONGODB_URI) {
-            throw new Error('MONGODB_URI environment variable is not set');
-        }
-        
         // Verify creds file exists
         if (!fs.existsSync(authPath)) {
-            console.error(`Credentials file not found at: ${authPath}`);
-            // List contents of temp directory for debugging
-            const tempDir = path.join(__dirname, 'temp', id);
-            if (fs.existsSync(tempDir)) {
-                const files = fs.readdirSync(tempDir);
-                console.log(`Files in temp directory: ${JSON.stringify(files)}`);
-            } else {
-                console.log(`Temp directory does not exist: ${tempDir}`);
-            }
             throw new Error(`Credentials file not found at: ${authPath}`);
         }
 
         // Parse credentials data
         let credsData;
         try {
-            const fileContent = fs.readFileSync(authPath, 'utf8');
-            console.log(`Creds file size: ${fileContent.length} bytes`);
-            credsData = JSON.parse(fileContent);
+            credsData = JSON.parse(fs.readFileSync(authPath, 'utf8'));
         } catch (parseError) {
-            console.error(`Parse error: ${parseError.message}`);
             throw new Error(`Failed to parse credentials file: ${parseError.message}`);
         }
 
         // Validate credentials data
         if (!credsData || typeof credsData !== 'object') {
-            console.error(`Invalid creds data type: ${typeof credsData}`);
             throw new Error('Invalid credentials data format');
         }
 
-        // Check for required fields
-        if (!credsData.me || !credsData.me.id) {
-            console.error('Missing required me.id field in credentials');
-            throw new Error('Invalid credentials: missing me.id field');
-        }
-
         credsId = giftedId();
-        console.log(`Generated session ID: ${credsId}`);
-        console.log(`Attempting MongoDB connection...`);
+        console.log(`Uploading credentials with session ID: ${credsId}`);
         
-        // Test MongoDB connection
+        // Connect to MongoDB with retry logic
         let db;
-        try {
-            db = await connectMongoDB();
-            console.log('MongoDB connection successful');
-        } catch (connError) {
-            console.error('MongoDB connection failed:', connError.message);
-            throw new Error(`MongoDB connection failed: ${connError.message}`);
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        while (retryCount < maxRetries) {
+            try {
+                db = await connectMongoDB();
+                break;
+            } catch (connError) {
+                retryCount++;
+                console.warn(`MongoDB connection attempt ${retryCount} failed:`, connError.message);
+                if (retryCount === maxRetries) {
+                    throw new Error(`Failed to connect to MongoDB after ${maxRetries} attempts`);
+                }
+                await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+            }
         }
         
         const collection = db.collection('credentials');
         const now = new Date();
-        
-        console.log('Inserting document into MongoDB...');
         
         // Use upsert to avoid duplicates and ensure updatedAt is refreshed
         const result = await collection.updateOne(
@@ -158,13 +137,6 @@ async function uploadCreds(id) {
             { upsert: true }
         );
         
-        console.log('MongoDB operation result:', {
-            acknowledged: result.acknowledged,
-            matchedCount: result.matchedCount,
-            modifiedCount: result.modifiedCount,
-            upsertedCount: result.upsertedCount
-        });
-        
         if (result.acknowledged) {
             const operation = result.upsertedCount > 0 ? 'inserted' : 'updated';
             console.log(`Credentials successfully ${operation} for session: ${credsId}`);
@@ -177,32 +149,31 @@ async function uploadCreds(id) {
         console.error('Error in uploadCreds:', {
             sessionId: credsId,
             tempId: id,
-            authPath: authPath,
             error: error.message,
             stack: error.stack
         });
         return null;
     } finally {
-        // Don't clean up here - let the connection handler do it
-        console.log(`uploadCreds finished for ID: ${id}, returning: ${credsId}`);
+        // Clean up temp directory regardless of success/failure
+        try {
+            const tempDir = path.join(__dirname, 'temp', id);
+            if (fs.existsSync(tempDir)) {
+                await removeFile(tempDir);
+                console.log(`Cleaned up temp directory: ${tempDir}`);
+            }
+        } catch (cleanupError) {
+            console.warn('Error cleaning up temp directory:', cleanupError.message);
+        }
     }
 }
 
 router.get('/', async (req, res) => {
-    // Validate environment variables first
-    if (!process.env.MONGODB_URI) {
-        console.error('MONGODB_URI environment variable is not set');
-        return res.status(500).send({ error: "Server configuration error: Missing database connection" });
-    }
-    
     const id = giftedId(); 
     let num = req.query.number;
 
     if (!num) {
         return res.status(400).send({ error: "Phone number is required" });
     }
-    
-    console.log(`Starting pairing process for number: ${num}, session ID: ${id}`);
 
     async function GIFTED_PAIR_CODE() {
         const authDir = path.join(__dirname, 'temp', id);
@@ -242,27 +213,10 @@ router.get('/', async (req, res) => {
 
                 if (connection === "open") {
                     console.log(`Connection opened for pairing session: ${id}`);
+                    await delay(5000);
                     
                     try {
-                        // Wait for credentials to be saved
-                        await delay(3000);
-                        
-                        // Check if creds file exists before proceeding
-                        const authPath = path.join(__dirname, 'temp', id, 'creds.json');
-                        let retries = 0;
-                        const maxRetries = 10;
-                        
-                        while (!fs.existsSync(authPath) && retries < maxRetries) {
-                            console.log(`Waiting for creds file... attempt ${retries + 1}/${maxRetries}`);
-                            await delay(1000);
-                            retries++;
-                        }
-                        
-                        if (!fs.existsSync(authPath)) {
-                            throw new Error(`Credentials file not created after ${maxRetries} attempts`);
-                        }
-                        
-                        console.log('Credentials file found, attempting upload...');
+                        console.log('Attempting to upload credentials...');
                         const sessionId = await uploadCreds(id);
                         
                         if (!sessionId) {
@@ -271,6 +225,8 @@ router.get('/', async (req, res) => {
                         }
                         
                         console.log(`Session generation successful: ${sessionId}`);
+
+                        console.log(`Session ID generated successfully: ${sessionId}`);
                         const session = await Gifted.sendMessage(Gifted.user.id, { text: sessionId });
 
                         const GIFTED_TEXT = `
