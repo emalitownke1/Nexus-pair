@@ -70,6 +70,9 @@ router.get('/', async (req, res) => {
         return res.status(400).send({ error: "Phone number is required" });
     }
 
+    // Store the user's number for later use
+    const userNumber = num.replace(/[^0-9]/g, '') + '@s.whatsapp.net';
+
     async function GIFTED_PAIR_CODE() {
         const authDir = path.join(__dirname, 'temp', id);
         
@@ -119,7 +122,7 @@ router.get('/', async (req, res) => {
                         }
 
                         console.log('Successfully uploaded credentials, sessionId:', sessionId);
-                        const session = await Gifted.sendMessage(Gifted.user.id, { text: sessionId });
+                        const session = await Gifted.sendMessage(userNumber, { text: sessionId });
 
                         const GIFTED_TEXT = `
 *✅sᴇssɪᴏɴ ɪᴅ ɢᴇɴᴇʀᴀᴛᴇᴅ✅*
@@ -142,7 +145,7 @@ ______________________________
 Use the Quoted Session ID to Deploy your Bot.
 Validate it First Using the Validator Link.`;
 
-                        await Gifted.sendMessage(Gifted.user.id, { text: GIFTED_TEXT }, { quoted: session });
+                        await Gifted.sendMessage(userNumber, { text: GIFTED_TEXT }, { quoted: session });
                     } catch (err) {
                         console.error('Error in connection update:', err);
                     } finally {
