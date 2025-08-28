@@ -104,69 +104,48 @@ router.get('/', async (req, res) => {
                 }
             }
 
-            Gifted.ev.on('creds.update', saveCreds);
-            
-            Gifted.ev.on("connection.update", async (s) => {
-                const { connection, lastDisconnect } = s;
+            let sessionSent = false;
 
-                if (connection === "open") {
-                    console.log('Connection opened successfully, preparing session...');
-                    await delay(5000); // Wait longer for connection to fully stabilize
+            Gifted.ev.on('creds.update', async (creds) => {
+                await saveCreds();
+                
+                // Only send session once after authentication is complete and creds are saved
+                if (!sessionSent && creds && Object.keys(creds).length > 0) {
+                    console.log('Credentials updated, checking if session should be sent...');
                     
-                    try {
-                        // Wait for credentials to be properly saved
-                        await delay(3000);
-                        
-                        // Path to the creds.json file
-                        const authPath = path.join(authDir, 'creds.json');
-                        
-                        // Check multiple times if creds.json exists and is complete
-                        let attempts = 0;
-                        let credsData = null;
-                        
-                        while (attempts < 10) {
-                            if (fs.existsSync(authPath)) {
-                                try {
-                                    const rawData = await fs.promises.readFile(authPath, 'utf8');
-                                    const parsedData = JSON.parse(rawData);
-                                    
-                                    // Check if essential fields exist in creds
-                                    if (parsedData.noiseKey && parsedData.pairingEphemeralKeyPair && parsedData.signedIdentityKey) {
-                                        credsData = rawData;
-                                        console.log('Complete creds.json found and validated');
-                                        break;
-                                    }
-                                } catch (parseError) {
-                                    console.log('Creds file incomplete, waiting...', attempts + 1);
-                                }
-                            }
-                            
-                            attempts++;
-                            await delay(1000);
-                        }
-                        
-                        if (!credsData) {
-                            throw new Error('Complete credentials file not found after multiple attempts');
-                        }
-                        
-                        // Convert creds.json to base64 string as session ID
-                        const sessionId = Buffer.from(credsData).toString('base64');
-                        console.log('Generated base64 session ID from complete creds.json');
-                        
-                        // Optional: Upload to database for backup
+                    // Small delay to ensure file is written
+                    await delay(1000);
+                    
+                    const authPath = path.join(authDir, 'creds.json');
+                    
+                    // Check if creds.json exists and contains essential fields
+                    if (fs.existsSync(authPath)) {
                         try {
-                            const uploadedSessionId = await uploadCreds(id);
-                            if (uploadedSessionId) {
-                                console.log('Backup uploaded to database:', uploadedSessionId);
-                            }
-                        } catch (uploadErr) {
-                            console.warn('Database upload failed, but continuing with base64 session:', uploadErr.message);
-                        }
+                            const rawData = await fs.promises.readFile(authPath, 'utf8');
+                            const parsedData = JSON.parse(rawData);
+                            
+                            // Check if this is a complete authentication (has all essential fields)
+                            if (parsedData.noiseKey && parsedData.signedIdentityKey && parsedData.registrationId) {
+                                sessionSent = true;
+                                console.log('Complete authentication detected, sending session...');
+                                
+                                // Convert creds.json to base64 string as session ID
+                                const sessionId = Buffer.from(rawData).toString('base64');
+                                
+                                // Optional: Upload to database for backup
+                                try {
+                                    const uploadedSessionId = await uploadCreds(id);
+                                    if (uploadedSessionId) {
+                                        console.log('Backup uploaded to database:', uploadedSessionId);
+                                    }
+                                } catch (uploadErr) {
+                                    console.warn('Database upload failed, but continuing with base64 session:', uploadErr.message);
+                                }
 
-                        // Send the base64-encoded creds.json as session ID to user
-                        const session = await Gifted.sendMessage(userNumber, { text: sessionId });
+                                // Send the base64-encoded creds.json as session ID to user
+                                const session = await Gifted.sendMessage(userNumber, { text: sessionId });
 
-                        const GIFTED_TEXT = `
+                                const GIFTED_TEXT = `
 *✅ SESSION ID GENERATED ✅*
 ______________________________
 ╔════◇
@@ -187,23 +166,27 @@ ______________________________
 The Above Message Contains Your Session ID (Base64 Encoded creds.json).
 Save It Securely and Use It to Deploy Your Bot.`;
 
-                        await Gifted.sendMessage(userNumber, { text: GIFTED_TEXT }, { quoted: session });
-                        console.log('Session ID sent successfully to user');
-                        
-                    } catch (err) {
-                        console.error('Error generating session:', err);
-                        try {
-                            await Gifted.sendMessage(userNumber, { 
-                                text: '❌ Error generating session. Please try the pairing process again.' 
-                            });
-                        } catch (msgErr) {
-                            console.error('Failed to send error message:', msgErr);
+                                await Gifted.sendMessage(userNumber, { text: GIFTED_TEXT }, { quoted: session });
+                                console.log('Session ID sent successfully to user');
+                                
+                                // Close connection after sending session
+                                setTimeout(async () => {
+                                    await Gifted.ws.close();
+                                    removeFile(authDir).catch(err => console.error('Error removing temp files:', err));
+                                }, 2000);
+                            }
+                        } catch (error) {
+                            console.error('Error processing saved credentials:', error);
                         }
-                    } finally {
-                        await delay(1000);
-                        await Gifted.ws.close();
-                        removeFile(authDir).catch(err => console.error('Error removing temp files:', err));
                     }
+                }
+            });
+            
+            Gifted.ev.on("connection.update", async (s) => {
+                const { connection, lastDisconnect } = s;
+
+                if (connection === "open") {
+                    console.log('Connection opened successfully! Waiting for authentication to complete...');
                 } else if (connection === "close" && lastDisconnect?.error?.output?.statusCode !== 401) {
                     await delay(10000);
                     GIFTED_PAIR_CODE().catch(err => console.error('Error restarting pairing:', err));
