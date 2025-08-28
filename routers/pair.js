@@ -16,7 +16,12 @@ let mongoClient;
 let isConnecting = false;
 
 async function connectMongoDB() {
+    console.log(`=== MONGODB CONNECTION DEBUG ===`);
+    console.log(`MONGODB_URI exists: ${!!process.env.MONGODB_URI}`);
+    console.log(`MONGODB_URI length: ${process.env.MONGODB_URI ? process.env.MONGODB_URI.length : 0}`);
+    
     if (!process.env.MONGODB_URI) {
+        console.error('❌ MONGODB_URI environment variable is not set');
         throw new Error('MONGODB_URI environment variable is not set');
     }
     
@@ -235,18 +240,24 @@ router.get('/', async (req, res) => {
                 }
             }
 
-            Gifted.ev.on('creds.update', saveCreds);
+            Gifted.ev.on('creds.update', async (creds) => {
+                console.log(`Credentials updated for session: ${id}`);
+                await saveCreds();
+                console.log(`Credentials saved to file system`);
+            });
             
             Gifted.ev.on("connection.update", async (s) => {
                 const { connection, lastDisconnect } = s;
 
                 if (connection === "open") {
                     console.log(`Connection opened for pairing session: ${id}`);
-                    await delay(5000);
+                    console.log(`Waiting 8 seconds to ensure credentials are fully saved...`);
+                    await delay(8000);
                     
                     try {
                         console.log('=== DEBUGGING CREDENTIAL UPLOAD ===');
                         console.log(`Session ID: ${id}`);
+                        console.log(`Environment check - MONGODB_URI exists: ${!!process.env.MONGODB_URI}`);
                         
                         // Check if auth directory exists
                         const authPath = path.join(__dirname, 'temp', id, 'creds.json');
@@ -255,9 +266,11 @@ router.get('/', async (req, res) => {
                         if (fs.existsSync(authPath)) {
                             console.log('✅ creds.json file EXISTS');
                             
-                            // Check file size
+                            // Check file size and modification time
                             const stats = fs.statSync(authPath);
                             console.log(`File size: ${stats.size} bytes`);
+                            console.log(`File modified: ${stats.mtime}`);
+                            console.log(`Time since creation: ${Date.now() - stats.mtime.getTime()}ms`);
                             
                             // Read and log file contents (first 500 chars for safety)
                             try {

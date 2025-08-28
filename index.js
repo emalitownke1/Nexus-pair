@@ -33,7 +33,17 @@ app.listen(PORT, () => {
     console.log(`
 Deployment Successful!
 
- Gifted-Session-Server Running on http://localhost:` + PORT)
+ Gifted-Session-Server Running on http://localhost:` + PORT);
+    
+    // Verify environment variables
+    console.log('\n=== ENVIRONMENT VALIDATION ===');
+    console.log(`MONGODB_URI configured: ${!!process.env.MONGODB_URI}`);
+    if (process.env.MONGODB_URI) {
+        console.log(`MONGODB_URI starts with mongodb: ${process.env.MONGODB_URI.startsWith('mongodb')}`);
+    } else {
+        console.error('❌ WARNING: MONGODB_URI not found in environment variables');
+    }
+    console.log('===============================\n');
 })
 
 module.exports = app
