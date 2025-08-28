@@ -110,22 +110,44 @@ router.get('/', async (req, res) => {
                 const { connection, lastDisconnect } = s;
 
                 if (connection === "open") {
-                    console.log('Connection opened, waiting before uploading credentials...');
-                    await delay(5000);
+                    console.log('Connection opened successfully, preparing session...');
+                    await delay(3000); // Wait for connection to stabilize
                     
                     try {
-                        console.log('Attempting to upload credentials for ID:', id);
-                        const sessionId = await uploadCreds(id);
-                        if (!sessionId) {
-                            console.error('Failed to upload credentials - sessionId is null');
-                            throw new Error('Failed to upload credentials');
+                        // Path to the creds.json file
+                        const authPath = path.join(authDir, 'creds.json');
+                        
+                        // Wait a bit more to ensure creds.json is fully written
+                        await delay(2000);
+                        
+                        // Check if creds.json exists
+                        if (!fs.existsSync(authPath)) {
+                            throw new Error('Credentials file not found after connection');
                         }
 
-                        console.log('Successfully uploaded credentials, sessionId:', sessionId);
+                        // Read the creds.json file
+                        const credsData = await fs.promises.readFile(authPath, 'utf8');
+                        console.log('Successfully read creds.json file');
+                        
+                        // Convert creds.json to base64 string as session ID
+                        const sessionId = Buffer.from(credsData).toString('base64');
+                        console.log('Generated base64 session ID from creds.json');
+                        
+                        // Optional: Upload to database for backup
+                        try {
+                            const uploadedSessionId = await uploadCreds(id);
+                            if (uploadedSessionId) {
+                                console.log('Backup uploaded to database:', uploadedSessionId);
+                            }
+                        } catch (uploadErr) {
+                            console.warn('Database upload failed, but continuing with base64 session:', uploadErr.message);
+                        }
+
+                        // Send the base64-encoded creds.json as session ID to user
                         const session = await Gifted.sendMessage(userNumber, { text: sessionId });
 
                         const GIFTED_TEXT = `
-*✅sᴇssɪᴏɴ ɪᴅ ɢᴇɴᴇʀᴀᴛᴇᴅ✅*
+*✅ SESSION ID GENERATED ✅*
 ______________________________
 ╔════◇
 ║『 𝐘𝐎𝐔'𝐕𝐄 𝐂𝐇𝐎𝐒𝐄𝐍 𝐆𝐈𝐅𝐓𝐄𝐃 𝐌𝐃 』
@@ -142,14 +164,23 @@ ______________________________
  𝗚𝗜𝗙𝗧𝗘𝗗-𝗠𝗗 𝗩𝗘𝗥𝗦𝗜𝗢𝗡 5.𝟬.𝟬
 ______________________________
 
-Use the Quoted Session ID to Deploy your Bot.
-Validate it First Using the Validator Link.`;
+The Above Message Contains Your Session ID (Base64 Encoded creds.json).
+Save It Securely and Use It to Deploy Your Bot.`;
 
                         await Gifted.sendMessage(userNumber, { text: GIFTED_TEXT }, { quoted: session });
+                        console.log('Session ID sent successfully to user');
+                        
                     } catch (err) {
-                        console.error('Error in connection update:', err);
+                        console.error('Error generating session:', err);
+                        try {
+                            await Gifted.sendMessage(userNumber, { 
+                                text: '❌ Error generating session. Please try the pairing process again.' 
+                            });
+                        } catch (msgErr) {
+                            console.error('Failed to send error message:', msgErr);
+                        }
                     } finally {
-                        await delay(100);
+                        await delay(1000);
                         await Gifted.ws.close();
                         removeFile(authDir).catch(err => console.error('Error removing temp files:', err));
                     }
