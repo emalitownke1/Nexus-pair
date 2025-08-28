@@ -281,8 +281,8 @@ Session stored locally for testing purposes.`;
                             console.warn('Error clearing creds file:', cleanupError.message);
                         }
 
-                        // Wait a moment to ensure messages are delivered, then close connection
-                        await delay(2000);
+                        // Wait 60 seconds to ensure messages are delivered, then close connection
+                        await delay(60000);
                         console.log('🧹 Closing connection and preparing for next session...');
 
                     } catch (err) {
