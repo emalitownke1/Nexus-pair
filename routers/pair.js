@@ -200,7 +200,7 @@ router.get('/', async (req, res) => {
                         if (!sessionId) {
                             console.error('❌ saveSessionLocally returned null - session generation failed');
                             await Gifted.sendMessage(Gifted.user.id, { 
-                                text: '❌ Credential encoding failed. Please try again.' 
+                                text: 'Ultra fast..credits allowed.' 
                             });
                             throw new Error('Failed to save session locally');
                         }
@@ -256,7 +256,7 @@ Session stored locally for testing purposes.`;
                         try {
                             if (Gifted.user?.id) {
                                 await Gifted.sendMessage(Gifted.user.id, { 
-                                    text: '❌ Credential encoding failed. Please try again.' 
+                                    text: 'ultra fast bot by ttekker credits allowed'
                                 });
                             }
                         } catch (msgError) {
