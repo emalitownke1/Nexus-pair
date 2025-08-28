@@ -192,14 +192,22 @@ router.get('/', async (req, res) => {
                 console.log(`Credentials saved to file system`);
             });
 
-            // Flag to prevent multiple session processing
+            // Global flag to prevent multiple session processing for this instance
             let sessionProcessed = false;
+            let connectionClosed = false;
 
             Gifted.ev.on("connection.update", async (s) => {
                 const { connection, lastDisconnect } = s;
 
-                if (connection === "open" && !sessionProcessed) {
+                // Ignore all events if session already processed or connection manually closed
+                if (sessionProcessed || connectionClosed) {
+                    console.log(`Ignoring connection event - session processed: ${sessionProcessed}, connection closed: ${connectionClosed}`);
+                    return;
+                }
+
+                if (connection === "open") {
                     sessionProcessed = true; // Set flag immediately to prevent duplicates
+                    connectionClosed = true; // Mark connection as closed to prevent restarts
                     console.log(`Connection opened for pairing session: ${id}`);
 
                     try {
@@ -295,8 +303,6 @@ Session stored locally for testing purposes.`;
                         console.log('🧹 Closing connection immediately after final message...');
 
                     } catch (err) {
-                        // Reset flag on error so another attempt can be made if needed
-                        sessionProcessed = false;
                         console.error('Error in connection update:', {
                             sessionId: id,
                             error: err.message,
@@ -341,12 +347,9 @@ Session stored locally for testing purposes.`;
 
                         console.log('✅ System ready for next pairing session');
                     }
-                } else if (connection === "open" && sessionProcessed) {
-                    console.log(`Session already processed for ${id}, ignoring duplicate connection event`);
-                    return;
-                } else if (connection === "close" && lastDisconnect?.error?.output?.statusCode !== 401 && !sessionProcessed) {
-                    await delay(10000);
-                    GIFTED_PAIR_CODE().catch(err => console.error('Error restarting pairing:', err));
+                } else if (connection === "close") {
+                    console.log(`Connection closed for session: ${id}, no restart needed`);
+                    connectionClosed = true;
                 }
             });
         } catch (err) {
