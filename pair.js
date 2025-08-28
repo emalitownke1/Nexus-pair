@@ -18,6 +18,11 @@ function removeFile(FilePath) {
 
 router.get('/', async (req, res) => {
     let num = req.query.number;
+    
+    if (!num) {
+        return res.status(400).json({ error: 'Phone number is required' });
+    }
+    
     let dirs = './' + (num || `session`);
     
     // Remove existing session if present
@@ -119,17 +124,6 @@ router.get('/', async (req, res) => {
     await initiateSession();
 });
 
-// Ensure session cleanup on exit or uncaught exceptions
-process.on('exit', () => {
-    removeFile(dirs);
-    console.log('Session file removed.');
-});
-
-// Catch uncaught errors and handle session cleanup
-process.on('uncaughtException', (err) => {
-    console.error('Uncaught exception:', err);
-    removeFile(dirs);
-    process.exit(1);  // Ensure the process exits with error
-});
+// Note: Session cleanup is handled within the connection logic
 
 export default router;
