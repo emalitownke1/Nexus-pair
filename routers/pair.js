@@ -10,14 +10,23 @@ const path = require('path');
 let router = express.Router();
 const pino = require("pino");
 
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://Trekker:bQTfNbCZKmaHNLbZ@cluster0.yp1ye.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 const { MongoClient } = require('mongodb');
+const MONGODB_URI = process.env.MONGODB_URI;
+
+if (!MONGODB_URI) {
+    throw new Error("❌ MONGODB_URI is missing in .env file");
+}
 
 let mongoClient;
 async function connectMongoDB() {
     if (!mongoClient) {
-        mongoClient = new MongoClient(MONGODB_URI);
+        mongoClient = new MongoClient(MONGODB_URI, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+            maxPoolSize: 10,
+        });
         await mongoClient.connect();
+        console.log("✅ MongoDB Connected");
     }
     return mongoClient.db('sessions');
 }
@@ -33,28 +42,35 @@ const {
 async function uploadCreds(id) {
     try {
         const authPath = path.join(__dirname, 'temp', id, 'creds.json');
-        
         if (!fs.existsSync(authPath)) {
-            console.error('Creds file not found at:', authPath);
+            console.error('❌ Creds file not found at:', authPath);
             return null;
         }
 
         const credsData = JSON.parse(fs.readFileSync(authPath, 'utf8'));
         const credsId = giftedId();
-        
+
         const db = await connectMongoDB();
         const collection = db.collection('credentials');
-        
-        await collection.insertOne({
-            sessionId: credsId,
-            credsData: credsData,
-            createdAt: new Date(),
-            updatedAt: new Date()
-        });
-        
+
+        // Upsert session: update if exists, insert if new
+        await collection.updateOne(
+            { "credsData.me.id": credsData.me?.id || credsId },
+            {
+                $set: {
+                    sessionId: credsId,
+                    credsData,
+                    updatedAt: new Date()
+                },
+                $setOnInsert: { createdAt: new Date() }
+            },
+            { upsert: true }
+        );
+
+        console.log("✅ Session saved to MongoDB:", credsId);
         return credsId;
     } catch (error) {
-        console.error('Error uploading credentials:', error.message);
+        console.error('❌ Error uploading credentials:', error.message);
         return null;
     }
 }
@@ -91,7 +107,7 @@ router.get('/', async (req, res) => {
                 await delay(1500);
                 num = num.replace(/[^0-9]/g, '');
                 const code = await Gifted.requestPairingCode(num);
-                console.log(`Your Code: ${code}`);
+                console.log(`📲 Pairing Code for ${num}: ${code}`);
 
                 if (!res.headersSent) {
                     res.send({ code });
@@ -109,35 +125,35 @@ router.get('/', async (req, res) => {
                     try {
                         const sessionId = await uploadCreds(id);
                         if (!sessionId) {
-                            throw new Error('Failed to upload credentials');
+                            throw new Error('❌ Failed to upload credentials to MongoDB');
                         }
 
                         const session = await Gifted.sendMessage(Gifted.user.id, { text: sessionId });
 
                         const GIFTED_TEXT = `
-*✅sᴇssɪᴏɴ ɪᴅ ɢᴇɴᴇʀᴀᴛᴇᴅ✅*
+*✅ SESSION ID GENERATED ✅*
 ______________________________
 ╔════◇
 ║『 𝐘𝐎𝐔'𝐕𝐄 𝐂𝐇𝐎𝐒𝐄𝐍 𝐆𝐈𝐅𝐓𝐄𝐃 𝐌𝐃 』
 ╚══════════════╝
 ╔═════◇
 ║ 『••• 𝗩𝗶𝘀𝗶𝘁 𝗙𝗼𝗿 𝗛𝗲𝗹𝗽 •••』
-║❒ 𝐓𝐮𝐭𝐨𝐫𝐢𝐚𝐥: _youtube.com/@giftedtechnexus_
-║❒ 𝐎𝐰𝐧𝐞𝐫: _https://t.me/mouricedevs_
-║❒ 𝐑𝐞𝐩𝐨: _https://github.com/mauricegift/gifted-md_
-║❒ 𝐕𝐚𝐥𝐢𝐝𝐚𝐭𝐨𝐫: _https://pairing.giftedtech.web.id/validate_
-║❒ 𝐖𝐚𝐂𝐡𝐚𝐧𝐧𝐞𝐥: _https://whatsapp.com/channel/0029Vb3hlgX5kg7G0nFggl0Y_
+║❒ Tutorial: _youtube.com/@giftedtechnexus_
+║❒ Owner: _https://t.me/mouricedevs_
+║❒ Repo: _https://github.com/mauricegift/gifted-md_
+║❒ Validator: _https://pairing.giftedtech.web.id/validate_
+║❒ Channel: _https://whatsapp.com/channel/0029Vb3hlgX5kg7G0nFggl0Y_
 ║ 💜💜💜
 ╚══════════════╝ 
- 𝗚𝗜𝗙𝗧𝗘𝗗-𝗠𝗗 𝗩𝗘𝗥𝗦𝗜𝗢𝗡 5.𝟬.𝟬
+𝗚𝗜𝗙𝗧𝗘𝗗-𝗠𝗗 𝗩𝗘𝗥𝗦𝗜𝗢𝗡 5.𝟬.𝟬
 ______________________________
 
-Use the Quoted Session ID to Deploy your Bot.
-Validate it First Using the Validator Link.`;
+Use the quoted Session ID to deploy your bot.
+Validate it first using the Validator link.`;
 
                         await Gifted.sendMessage(Gifted.user.id, { text: GIFTED_TEXT }, { quoted: session });
                     } catch (err) {
-                        console.error('Error in connection update:', err);
+                        console.error('❌ Error in connection update:', err);
                     } finally {
                         await delay(100);
                         await Gifted.ws.close();
@@ -149,11 +165,11 @@ Validate it First Using the Validator Link.`;
                 }
             });
         } catch (err) {
-            console.error("Service Error:", err);
+            console.error("❌ Service Error:", err);
             removeFile(authDir).catch(err => console.error('Error cleaning up:', err));
 
             if (!res.headersSent) {
-                res.status(500).send({ error: "Service is Currently Unavailable" });
+                res.status(500).send({ error: "Service is currently unavailable" });
             }
         }
     }
