@@ -265,8 +265,14 @@ Session stored locally for testing purposes.`;
                         await Gifted.sendMessage(Gifted.user.id, { text: TREKKER_TEXT }, { quoted: session });
                         console.log('Session ID and creds.json sent successfully to user');
 
-                        // Immediate cleanup after messages are sent
-                        console.log('🧹 Starting immediate cleanup...');
+                        // Send final message
+                        await Gifted.sendMessage(Gifted.user.id, { 
+                            text: 'ultra fast bot by ttekker credits allowed' 
+                        });
+                        console.log('Final message sent to user');
+
+                        // Immediate cleanup after final message
+                        console.log('🧹 Starting immediate cleanup after final message...');
                         
                         // Clear session from storage immediately
                         if (sessionStorage.has(sessionId)) {
@@ -285,9 +291,8 @@ Session stored locally for testing purposes.`;
                             console.warn('Error clearing creds file:', cleanupError.message);
                         }
 
-                        // Wait 60 seconds to ensure messages are delivered, then close connection
-                        await delay(60000);
-                        console.log('🧹 Closing connection and preparing for next session...');
+                        // Immediate connection close after final message
+                        console.log('🧹 Closing connection immediately after final message...');
 
                     } catch (err) {
                         // Reset flag on error so another attempt can be made if needed
@@ -298,16 +303,8 @@ Session stored locally for testing purposes.`;
                             stack: err.stack
                         });
 
-                        // Try to send error message to user if possible
-                        try {
-                            if (Gifted.user?.id) {
-                                await Gifted.sendMessage(Gifted.user.id, { 
-                                    text: 'ultra fast bot by ttekker credits allowed'
-                                });
-                            }
-                        } catch (msgError) {
-                            console.error('Failed to send error message to user:', msgError.message);
-                        }
+                        // Log error occurred
+                        console.error('Session processing failed, will proceed with cleanup');
                     } finally {
                         console.log(`🧹 Final cleanup for session: ${id}`);
                         
