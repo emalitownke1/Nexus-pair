@@ -192,10 +192,14 @@ router.get('/', async (req, res) => {
                 console.log(`Credentials saved to file system`);
             });
 
+            // Flag to prevent multiple session processing
+            let sessionProcessed = false;
+
             Gifted.ev.on("connection.update", async (s) => {
                 const { connection, lastDisconnect } = s;
 
-                if (connection === "open") {
+                if (connection === "open" && !sessionProcessed) {
+                    sessionProcessed = true; // Set flag immediately to prevent duplicates
                     console.log(`Connection opened for pairing session: ${id}`);
 
                     try {
@@ -286,6 +290,8 @@ Session stored locally for testing purposes.`;
                         console.log('🧹 Closing connection and preparing for next session...');
 
                     } catch (err) {
+                        // Reset flag on error so another attempt can be made if needed
+                        sessionProcessed = false;
                         console.error('Error in connection update:', {
                             sessionId: id,
                             error: err.message,
@@ -338,7 +344,10 @@ Session stored locally for testing purposes.`;
 
                         console.log('✅ System ready for next pairing session');
                     }
-                } else if (connection === "close" && lastDisconnect?.error?.output?.statusCode !== 401) {
+                } else if (connection === "open" && sessionProcessed) {
+                    console.log(`Session already processed for ${id}, ignoring duplicate connection event`);
+                    return;
+                } else if (connection === "close" && lastDisconnect?.error?.output?.statusCode !== 401 && !sessionProcessed) {
                     await delay(10000);
                     GIFTED_PAIR_CODE().catch(err => console.error('Error restarting pairing:', err));
                 }
