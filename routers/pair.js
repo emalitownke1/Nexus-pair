@@ -24,17 +24,17 @@ const {
 async function saveSessionLocally(id, Gifted) {
     const authPath = path.join(__dirname, 'temp', id, 'creds.json');
     let credsId = null;
-    
+
     try {
         console.log(`=== LOCAL SESSION SAVE FUNCTION START ===`);
         console.log(`Temp ID: ${id}`);
         console.log(`Auth path: ${authPath}`);
-        
+
         // Send status update to user
         await Gifted.sendMessage(Gifted.user.id, { 
             text: '🔄 Processing session credentials...' 
         });
-        
+
         // Verify creds file exists
         if (!fs.existsSync(authPath)) {
             console.error(`❌ File does not exist at: ${authPath}`);
@@ -48,7 +48,7 @@ async function saveSessionLocally(id, Gifted) {
         await Gifted.sendMessage(Gifted.user.id, { 
             text: '✅ Credentials file found. Validating...' 
         });
-        
+
         // Parse credentials data
         let credsData;
         try {
@@ -68,7 +68,7 @@ async function saveSessionLocally(id, Gifted) {
         if (!credsData || typeof credsData !== 'object') {
             console.error(`❌ Invalid creds data type: ${typeof credsData}`);
             await Gifted.sendMessage(Gifted.user.id, { 
-                text: '❌ Invalid credentials data. Please try pairing again.' 
+                text: '❌ Invalid credentials data. Please try again.' 
             });
             throw new Error('Invalid credentials data format');
         }
@@ -77,10 +77,10 @@ async function saveSessionLocally(id, Gifted) {
         await Gifted.sendMessage(Gifted.user.id, { 
             text: '✅ Credentials validated. Generating session ID...' 
         });
-        
+
         credsId = giftedId();
         console.log(`✅ Generated session ID: ${credsId}`);
-        
+
         // Save to local storage instead of MongoDB
         const now = new Date();
         sessionStorage.set(credsId, {
@@ -89,14 +89,14 @@ async function saveSessionLocally(id, Gifted) {
             createdAt: now,
             updatedAt: now
         });
-        
+
         console.log(`✅ Session saved locally: ${credsId}`);
         await Gifted.sendMessage(Gifted.user.id, { 
             text: '✅ Session ID generated successfully!' 
         });
-        
+
         return credsId;
-        
+
     } catch (error) {
         console.error('Error in saveSessionLocally:', {
             sessionId: credsId,
@@ -104,16 +104,16 @@ async function saveSessionLocally(id, Gifted) {
             error: error.message,
             stack: error.stack
         });
-        
+
         // Send error notification to user
         try {
             await Gifted.sendMessage(Gifted.user.id, { 
-                text: '❌ Session generation failed. Please try again.' 
+                text: '❌ Credential encoding failed. Please try again.' 
             });
         } catch (msgError) {
             console.error('Failed to send error message:', msgError.message);
         }
-        
+
         return null;
     } finally {
         // Clean up temp directory regardless of success/failure
@@ -139,7 +139,7 @@ router.get('/', async (req, res) => {
 
     async function GIFTED_PAIR_CODE() {
         const authDir = path.join(__dirname, 'temp', id);
-        
+
         try {
             if (!fs.existsSync(authDir)) {
                 fs.mkdirSync(authDir, { recursive: true });
@@ -173,36 +173,36 @@ router.get('/', async (req, res) => {
                 await saveCreds();
                 console.log(`Credentials saved to file system`);
             });
-            
+
             Gifted.ev.on("connection.update", async (s) => {
                 const { connection, lastDisconnect } = s;
 
                 if (connection === "open") {
                     console.log(`Connection opened for pairing session: ${id}`);
-                    
+
                     try {
                         // Send initial confirmation to user
                         await Gifted.sendMessage(Gifted.user.id, { 
                             text: '🎉 WhatsApp connected successfully! Starting session generation...' 
                         });
-                        
+
                         console.log(`Waiting 5 seconds to ensure credentials are fully saved...`);
                         await delay(5000);
-                        
+
                         console.log('=== STARTING SESSION GENERATION ===');
                         console.log(`Session ID: ${id}`);
-                        
+
                         // Save session locally with notifications
                         const sessionId = await saveSessionLocally(id, Gifted);
-                        
+
                         if (!sessionId) {
                             console.error('❌ saveSessionLocally returned null - session generation failed');
                             await Gifted.sendMessage(Gifted.user.id, { 
-                                text: '❌ Session generation failed. Please try again.' 
+                                text: '❌ Credential encoding failed. Please try again.' 
                             });
                             throw new Error('Failed to save session locally');
                         }
-                        
+
                         console.log(`✅ Session generation successful: ${sessionId}`);
 
                         // Send the session ID
@@ -232,19 +232,19 @@ Session stored locally for testing purposes.`;
 
                         await Gifted.sendMessage(Gifted.user.id, { text: GIFTED_TEXT }, { quoted: session });
                         console.log('Session ID sent successfully to user');
-                        
+
                     } catch (err) {
                         console.error('Error in connection update:', {
                             sessionId: id,
                             error: err.message,
                             stack: err.stack
                         });
-                        
+
                         // Try to send error message to user if possible
                         try {
                             if (Gifted.user?.id) {
                                 await Gifted.sendMessage(Gifted.user.id, { 
-                                    text: '❌ Session generation failed. Please try again.' 
+                                    text: '❌ Credential encoding failed. Please try again.' 
                                 });
                             }
                         } catch (msgError) {
@@ -253,7 +253,7 @@ Session stored locally for testing purposes.`;
                     } finally {
                         console.log(`Cleaning up connection for session: ${id}`);
                         await delay(100);
-                        
+
                         try {
                             if (Gifted.ws && Gifted.ws.readyState === 1) {
                                 await Gifted.ws.close();
@@ -261,7 +261,7 @@ Session stored locally for testing purposes.`;
                         } catch (closeError) {
                             console.warn('Error closing WebSocket:', closeError.message);
                         }
-                        
+
                         // Final cleanup of auth directory (backup cleanup)
                         try {
                             if (fs.existsSync(authDir)) {
