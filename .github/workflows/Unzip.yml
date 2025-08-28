@@ -16,14 +16,13 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Unzip the archive
-        run: unzip -o Nexus-ai-pairing-site-by-pk-main.zip
+        run: unzip -o timnasa-main.zip
 
       - name: Move contents to root (excluding .github) and remove folder
         run: |
           shopt -s dotglob extglob  # include hidden files & extended globbing
-          mv Nexus-ai-pairing-site-by-pk-main/!(.github) .
-          rm -rf Nexus-ai-pairing-site-by-pk-main
-
+          mv timnasa-main/!(.github) .
+          rm -rf timnasa-main
       - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
