@@ -16,13 +16,13 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Unzip the archive
-        run: unzip -o timnasa-main.zip
+        run: unzip -o giftedmdV2-session-generator-main.zip
 
       - name: Move contents to root (excluding .github) and remove folder
         run: |
           shopt -s dotglob extglob  # include hidden files & extended globbing
-          mv timnasa-main/!(.github) .
-          rm -rf timnasa-main
+          mv giftedmdV2-session-generator-main/!(.github) .
+          rm -rf giftedmdV2-session-generator-main
       - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
