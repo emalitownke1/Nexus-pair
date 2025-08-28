@@ -10,17 +10,60 @@ const path = require('path');
 let router = express.Router();
 const pino = require("pino");
 
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://Trekker:bQTfNbCZKmaHNLbZ@cluster0.yp1ye.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 const { MongoClient } = require('mongodb');
 
 let mongoClient;
+let isConnecting = false;
+
 async function connectMongoDB() {
-    if (!mongoClient) {
-        mongoClient = new MongoClient(MONGODB_URI);
-        await mongoClient.connect();
+    if (!process.env.MONGODB_URI) {
+        throw new Error('MONGODB_URI environment variable is not set');
     }
-    return mongoClient.db('sessions');
+    
+    if (mongoClient && mongoClient.topology && mongoClient.topology.isConnected()) {
+        return mongoClient.db('sessions');
+    }
+    
+    if (isConnecting) {
+        // Wait for existing connection attempt
+        while (isConnecting) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        return mongoClient.db('sessions');
+    }
+    
+    try {
+        isConnecting = true;
+        console.log('Establishing MongoDB connection...');
+        
+        mongoClient = new MongoClient(process.env.MONGODB_URI, {
+            maxPoolSize: 10,
+            serverSelectionTimeoutMS: 5000,
+            socketTimeoutMS: 45000,
+            family: 4
+        });
+        
+        await mongoClient.connect();
+        console.log('MongoDB connected successfully');
+        
+        return mongoClient.db('sessions');
+    } catch (error) {
+        console.error('MongoDB connection failed:', error.message);
+        mongoClient = null;
+        throw error;
+    } finally {
+        isConnecting = false;
+    }
 }
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+    if (mongoClient) {
+        await mongoClient.close();
+        console.log('MongoDB connection closed');
+    }
+    process.exit(0);
+});
 
 const {
     default: Gifted_Tech,
@@ -31,31 +74,96 @@ const {
 } = require("@whiskeysockets/baileys");
 
 async function uploadCreds(id) {
+    const authPath = path.join(__dirname, 'temp', id, 'creds.json');
+    let credsId = null;
+    
     try {
-        const authPath = path.join(__dirname, 'temp', id, 'creds.json');
-        
+        // Verify creds file exists
         if (!fs.existsSync(authPath)) {
-            console.error('Creds file not found at:', authPath);
-            return null;
+            throw new Error(`Credentials file not found at: ${authPath}`);
         }
 
-        const credsData = JSON.parse(fs.readFileSync(authPath, 'utf8'));
-        const credsId = giftedId();
+        // Parse credentials data
+        let credsData;
+        try {
+            credsData = JSON.parse(fs.readFileSync(authPath, 'utf8'));
+        } catch (parseError) {
+            throw new Error(`Failed to parse credentials file: ${parseError.message}`);
+        }
+
+        // Validate credentials data
+        if (!credsData || typeof credsData !== 'object') {
+            throw new Error('Invalid credentials data format');
+        }
+
+        credsId = giftedId();
+        console.log(`Uploading credentials with session ID: ${credsId}`);
         
-        const db = await connectMongoDB();
+        // Connect to MongoDB with retry logic
+        let db;
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        while (retryCount < maxRetries) {
+            try {
+                db = await connectMongoDB();
+                break;
+            } catch (connError) {
+                retryCount++;
+                console.warn(`MongoDB connection attempt ${retryCount} failed:`, connError.message);
+                if (retryCount === maxRetries) {
+                    throw new Error(`Failed to connect to MongoDB after ${maxRetries} attempts`);
+                }
+                await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+            }
+        }
+        
         const collection = db.collection('credentials');
+        const now = new Date();
         
-        await collection.insertOne({
-            sessionId: credsId,
-            credsData: credsData,
-            createdAt: new Date(),
-            updatedAt: new Date()
-        });
+        // Use upsert to avoid duplicates and ensure updatedAt is refreshed
+        const result = await collection.updateOne(
+            { sessionId: credsId },
+            {
+                $set: {
+                    sessionId: credsId,
+                    credsData: credsData,
+                    updatedAt: now
+                },
+                $setOnInsert: {
+                    createdAt: now
+                }
+            },
+            { upsert: true }
+        );
         
-        return credsId;
+        if (result.acknowledged) {
+            const operation = result.upsertedCount > 0 ? 'inserted' : 'updated';
+            console.log(`Credentials successfully ${operation} for session: ${credsId}`);
+            return credsId;
+        } else {
+            throw new Error('Database operation was not acknowledged');
+        }
+        
     } catch (error) {
-        console.error('Error uploading credentials:', error.message);
+        console.error('Error in uploadCreds:', {
+            sessionId: credsId,
+            tempId: id,
+            error: error.message,
+            stack: error.stack
+        });
         return null;
+    } finally {
+        // Clean up temp directory regardless of success/failure
+        try {
+            const tempDir = path.join(__dirname, 'temp', id);
+            if (fs.existsSync(tempDir)) {
+                await removeFile(tempDir);
+                console.log(`Cleaned up temp directory: ${tempDir}`);
+            }
+        } catch (cleanupError) {
+            console.warn('Error cleaning up temp directory:', cleanupError.message);
+        }
     }
 }
 
@@ -104,14 +212,18 @@ router.get('/', async (req, res) => {
                 const { connection, lastDisconnect } = s;
 
                 if (connection === "open") {
+                    console.log(`Connection opened for pairing session: ${id}`);
                     await delay(5000);
                     
                     try {
+                        console.log('Attempting to upload credentials...');
                         const sessionId = await uploadCreds(id);
+                        
                         if (!sessionId) {
-                            throw new Error('Failed to upload credentials');
+                            throw new Error('Failed to upload credentials to MongoDB');
                         }
 
+                        console.log(`Session ID generated successfully: ${sessionId}`);
                         const session = await Gifted.sendMessage(Gifted.user.id, { text: sessionId });
 
                         const GIFTED_TEXT = `
@@ -136,12 +248,46 @@ Use the Quoted Session ID to Deploy your Bot.
 Validate it First Using the Validator Link.`;
 
                         await Gifted.sendMessage(Gifted.user.id, { text: GIFTED_TEXT }, { quoted: session });
+                        console.log('Session ID sent successfully to user');
+                        
                     } catch (err) {
-                        console.error('Error in connection update:', err);
+                        console.error('Error in connection update:', {
+                            sessionId: id,
+                            error: err.message,
+                            stack: err.stack
+                        });
+                        
+                        // Try to send error message to user if possible
+                        try {
+                            if (Gifted.user?.id) {
+                                await Gifted.sendMessage(Gifted.user.id, { 
+                                    text: '❌ Session generation failed. Please try again.' 
+                                });
+                            }
+                        } catch (msgError) {
+                            console.error('Failed to send error message to user:', msgError.message);
+                        }
                     } finally {
+                        console.log(`Cleaning up connection for session: ${id}`);
                         await delay(100);
-                        await Gifted.ws.close();
-                        removeFile(authDir).catch(err => console.error('Error removing temp files:', err));
+                        
+                        try {
+                            if (Gifted.ws && Gifted.ws.readyState === 1) {
+                                await Gifted.ws.close();
+                            }
+                        } catch (closeError) {
+                            console.warn('Error closing WebSocket:', closeError.message);
+                        }
+                        
+                        // Final cleanup of auth directory (backup cleanup)
+                        try {
+                            if (fs.existsSync(authDir)) {
+                                await removeFile(authDir);
+                                console.log(`Final cleanup completed for: ${authDir}`);
+                            }
+                        } catch (cleanupError) {
+                            console.error('Error in final cleanup:', cleanupError.message);
+                        }
                     }
                 } else if (connection === "close" && lastDisconnect?.error?.output?.statusCode !== 401) {
                     await delay(10000);
