@@ -152,16 +152,29 @@ router.get('/', async (req, res) => {
                 sessionStorage.clear();
                 console.log('🧹 Forced cleanup: SessionStorage cleared');
                 
-                // Close WhatsApp connection if it exists
-                if (Gifted && Gifted.ws && Gifted.ws.readyState === 1) {
-                    await Gifted.ws.close();
-                    console.log('🧹 Forced cleanup: WhatsApp connection closed');
-                }
-                
-                // Clear authentication state
-                if (Gifted && Gifted.authState) {
-                    Gifted.authState = null;
-                    console.log('🧹 Forced cleanup: Auth state cleared');
+                // Close WhatsApp connection properly
+                if (Gifted) {
+                    try {
+                        // Remove all event listeners first
+                        if (Gifted.ev) {
+                            Gifted.ev.removeAllListeners();
+                            console.log('🧹 Forced cleanup: Event listeners removed');
+                        }
+                        
+                        // Close WebSocket connection
+                        if (Gifted.ws && Gifted.ws.readyState === 1) {
+                            await Gifted.ws.close();
+                            console.log('🧹 Forced cleanup: WhatsApp connection closed');
+                        }
+                        
+                        // Clear authentication state
+                        if (Gifted.authState) {
+                            Gifted.authState = null;
+                            console.log('🧹 Forced cleanup: Auth state cleared');
+                        }
+                    } catch (connectionError) {
+                        console.warn('Warning during connection cleanup:', connectionError.message);
+                    }
                 }
                 
                 // Remove temp directory
@@ -207,8 +220,17 @@ router.get('/', async (req, res) => {
 
             Gifted.ev.on('creds.update', async (creds) => {
                 console.log(`Credentials updated for session: ${id}`);
-                await saveCreds();
-                console.log(`Credentials saved to file system`);
+                try {
+                    // Check if temp directory still exists before saving
+                    if (fs.existsSync(authDir)) {
+                        await saveCreds();
+                        console.log(`Credentials saved to file system`);
+                    } else {
+                        console.log(`Skipping credential save - temp directory removed for session: ${id}`);
+                    }
+                } catch (saveError) {
+                    console.warn(`Warning: Could not save credentials for session ${id}:`, saveError.message);
+                }
             });
 
             Gifted.ev.on("connection.update", async (s) => {
@@ -279,24 +301,27 @@ Powered by TREKKER-MD....ultra fast bot.`;
                         sessionStorage.clear();
                         console.log('✅ SessionStorage cleared');
                         
-                        // Close the WhatsApp connection immediately
+                        // Close the WhatsApp connection properly before cleanup
                         try {
+                            // Remove all event listeners first to prevent further credential saves
+                            if (Gifted.ev) {
+                                Gifted.ev.removeAllListeners();
+                                console.log('✅ Event listeners removed');
+                            }
+                            
+                            // Close WebSocket connection
                             if (Gifted.ws && Gifted.ws.readyState === 1) {
                                 await Gifted.ws.close();
                                 console.log('✅ WhatsApp WebSocket connection closed');
                             }
-                        } catch (closeError) {
-                            console.warn('Warning: Error closing WebSocket:', closeError.message);
-                        }
-                        
-                        // Clear any remaining authentication state
-                        try {
+                            
+                            // Clear authentication state
                             if (Gifted.authState) {
                                 Gifted.authState = null;
                                 console.log('✅ Authentication state cleared');
                             }
-                        } catch (authClearError) {
-                            console.warn('Warning: Error clearing auth state:', authClearError.message);
+                        } catch (closeError) {
+                            console.warn('Warning: Error during connection cleanup:', closeError.message);
                         }
                         
                         // Force cleanup of temp directory immediately
@@ -369,12 +394,24 @@ Powered by TREKKER-MD....ultra fast bot.`;
             // Manual cleanup on error
             try {
                 sessionStorage.clear();
-                if (Gifted && Gifted.ws && Gifted.ws.readyState === 1) {
-                    await Gifted.ws.close();
+                
+                if (Gifted) {
+                    // Remove event listeners first
+                    if (Gifted.ev) {
+                        Gifted.ev.removeAllListeners();
+                    }
+                    
+                    // Close connection
+                    if (Gifted.ws && Gifted.ws.readyState === 1) {
+                        await Gifted.ws.close();
+                    }
+                    
+                    // Clear auth state
+                    if (Gifted.authState) {
+                        Gifted.authState = null;
+                    }
                 }
-                if (Gifted && Gifted.authState) {
-                    Gifted.authState = null;
-                }
+                
                 console.log('🧹 Error cleanup: All data cleared and connections closed');
             } catch (cleanupErr) {
                 console.error('Error during error cleanup:', cleanupErr.message);
