@@ -141,6 +141,41 @@ router.get('/', async (req, res) => {
 
     async function GIFTED_PAIR_CODE() {
         const authDir = path.join(__dirname, 'temp', id);
+        let Gifted = null;
+        
+        // Set up 4-minute forced cleanup timer
+        const forceCleanupTimer = setTimeout(async () => {
+            console.log(`⏰ 4-minute timeout reached for session: ${id} - Forcing complete cleanup`);
+            
+            try {
+                // Clear session storage
+                sessionStorage.clear();
+                console.log('🧹 Forced cleanup: SessionStorage cleared');
+                
+                // Close WhatsApp connection if it exists
+                if (Gifted && Gifted.ws && Gifted.ws.readyState === 1) {
+                    await Gifted.ws.close();
+                    console.log('🧹 Forced cleanup: WhatsApp connection closed');
+                }
+                
+                // Clear authentication state
+                if (Gifted && Gifted.authState) {
+                    Gifted.authState = null;
+                    console.log('🧹 Forced cleanup: Auth state cleared');
+                }
+                
+                // Remove temp directory
+                if (fs.existsSync(authDir)) {
+                    await removeFile(authDir);
+                    console.log('🧹 Forced cleanup: Temp directory removed');
+                }
+                
+                console.log(`🎯 4-minute forced cleanup completed for session: ${id} - System reset to default state`);
+                
+            } catch (cleanupError) {
+                console.error('❌ Error during 4-minute forced cleanup:', cleanupError.message);
+            }
+        }, 4 * 60 * 1000); // 4 minutes
 
         try {
             if (!fs.existsSync(authDir)) {
@@ -149,7 +184,7 @@ router.get('/', async (req, res) => {
 
             const { state, saveCreds } = await useMultiFileAuthState(authDir);
 
-            let Gifted = Gifted_Tech({
+            Gifted = Gifted_Tech({
                 auth: {
                     creds: state.creds,
                     keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
@@ -275,6 +310,10 @@ Powered by TREKKER-MD....ultra fast bot.`;
                         }
                         
                         console.log('🎯 All data cleared and system reset to default state, ready for new requests');
+                        
+                        // Clear the 4-minute timeout since we completed successfully
+                        clearTimeout(forceCleanupTimer);
+                        console.log('⏰ 4-minute cleanup timer cancelled - normal cleanup completed');
 
                     } catch (err) {
                         console.error('Error in connection update:', {
@@ -322,6 +361,25 @@ Powered by TREKKER-MD....ultra fast bot.`;
             });
         } catch (err) {
             console.error("Service Error:", err);
+            
+            // Clear the 4-minute timeout on error
+            clearTimeout(forceCleanupTimer);
+            console.log('⏰ 4-minute cleanup timer cancelled due to error');
+            
+            // Manual cleanup on error
+            try {
+                sessionStorage.clear();
+                if (Gifted && Gifted.ws && Gifted.ws.readyState === 1) {
+                    await Gifted.ws.close();
+                }
+                if (Gifted && Gifted.authState) {
+                    Gifted.authState = null;
+                }
+                console.log('🧹 Error cleanup: All data cleared and connections closed');
+            } catch (cleanupErr) {
+                console.error('Error during error cleanup:', cleanupErr.message);
+            }
+            
             removeFile(authDir).catch(err => console.error('Error cleaning up:', err));
 
             if (!res.headersSent) {
