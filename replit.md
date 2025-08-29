@@ -1,10 +1,10 @@
 # Overview
 
-The Gifted Session Generator is a web-based WhatsApp bot session management system built with Node.js and Express. It enables users to generate, validate, and manage WhatsApp bot authentication sessions through QR code scanning or phone number pairing. The system provides a complete solution for WhatsApp bot developers to handle authentication credentials securely.
+The TREKKER-MD Session Generator is a web-based WhatsApp bot session management system built with Node.js and Express. It enables users to generate, validate, and manage WhatsApp bot authentication sessions through QR code scanning or phone number pairing. The system provides a complete solution for WhatsApp bot developers to handle authentication credentials securely.
 
 # Recent Changes
 
-**August 29, 2025**: Enhanced the pairing system with automatic data cleanup and connection reset after successful session generation. The system now automatically clears all stored data, closes connections, and resets to default state after sending success messages to users, ensuring the server is ready for new requests.
+**August 29, 2025**: Rebranded system from GIFTED-MD to TREKKER-MD with updated contact information. Enhanced the pairing system with automatic data cleanup and connection reset after successful session generation. The system now automatically clears all stored data, closes connections, and resets to default state after sending success messages to users, ensuring the server is ready for new requests.
 
 # User Preferences
 

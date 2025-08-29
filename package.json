@@ -1,16 +1,16 @@
 {
-  "description": "gifted-pair-code",
+  "description": "trekker-md-pair-code",
   "main": "./index.js",
   "type": "commonjs",
   "engines": {
     "node": ">=20.0.0"
   },
   "scripts": {
-    "start": "pm2 start index.js --deep-monitoring --attach --name gifted",
-    "stop": "pm2 stop gifted",
-    "restart": "pm2 restart gifted"
+    "start": "pm2 start index.js --deep-monitoring --attach --name trekker-md",
+    "stop": "pm2 stop trekker-md",
+    "restart": "pm2 restart trekker-md"
   },
-  "author": "Gifted Tech",
+  "author": "Trekker Tech",
   "license": "GPL-3.0 license",
   "dependencies": {
     "@hapi/boom": "*",

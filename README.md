@@ -1,7 +1,7 @@
-# Gifted-Session-Generator
+# TREKKER-MD-Session-Generator
 - Fork, Star and Edit as you wish
 - Deploy to your favourite hosting server eg Heroku or Render or self hosting
-- This is what I use in my **[Session Site](https://pairing.giftedtech.web.id)** so don't ask for more...
+- This is what I use in my **[Session Site](https://dc693d3f-99a0-4944-94cc-6b839418279c.e1-us-east-azure.choreoapps.dev)** so don't ask for more...
 
 <details>
 <summary>SAMPLE USAGE IN BOT</summary>
@@ -17,7 +17,7 @@ const fs = require('fs'),
 
 createDirIfNotExist(sessionDir);
 
-const SESSIONS_BASE_URL = 'https://creds.giftedtech.web.id'; // Your Backened Url Here
+const SESSIONS_BASE_URL = 'https://dc693d3f-99a0-4944-94cc-6b839418279c.e1-us-east-azure.choreoapps.dev'; // Your Backend Url Here
 const SESSIONS_API_KEY = ''; // Must Match one of your Backened ApiKeys
 
 async function loadSession() {
@@ -29,8 +29,8 @@ async function loadSession() {
 
     const credsId = config.SESSION_ID;
 
-    if (!credsId.startsWith('Gifted~')) {
-      console.log('Invalid SESSION_ID: It must start with "Gifted~"');
+    if (!credsId.startsWith('TREKKER~')) {
+      console.log('Invalid SESSION_ID: It must start with "TREKKER~"');
       return false;
     }
 
@@ -65,13 +65,13 @@ module.exports = { loadSession }
 // 2. IN YOUR BOT START FILE(INDEX.JS/CLIENT.JS):
 const { loadSession } = require("./lib");
 // Other things....
-async function ConnectGiftedToWA() {
+async function ConnectTrekkerToWA() {
   await loadSession();
-console.log('⏱️ Conneting Gifted Md ⏱️')
+console.log('⏱️ Connecting TREKKER-MD ⏱️')
 const { state, saveCreds } = await useMultiFileAuthState(__dirname + '/session/')
 var { version, isLatest } = await fetchLatestBaileysVersion()
 
-const Gifted = GiftedConnect({
+const Trekker = TrekkerConnect({
         logger: P({ level: 'silent' }),
         printQRInTerminal: !config.SESSION_ID, // Continue your functions......
 
@@ -83,22 +83,22 @@ const Gifted = GiftedConnect({
 <details>
 <summary>MORE INFO</summary>
    
-<strong>NB:<strong/> This repo also generates session ID for all bots using gifted-baileys/whiskeysockets/baileys but with ***mongodb*** storage.
+<strong>NB:<strong/> This repo also generates session ID for all bots using trekker-baileys/whiskeysockets/baileys but with ***mongodb*** storage.
 [![-----------------------------------------------------](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/colored.png)](#table-of-contents)
-<br/>WEB - PAIR CODE FOR BOTS WITH GIFTED-BAILEYS
+<br/>WEB - PAIR CODE FOR BOTS WITH TREKKER-MD-BAILEYS
 [![-----------------------------------------------------](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/colored.png)](#table-of-contents)
 <p align="center">
    <a href="https://github.com/mauricegift">
     <img src="https://files.catbox.moe/52699c.jpg" width="500">
      
 </a>
- <p align="center"><img src="https://profile-counter.glitch.me/{mauricegift}/count.svg" alt="Gifted:: Visitor's Count" /></p>
+ <p align="center"><img src="https://profile-counter.glitch.me/{mauricegift}/count.svg" alt="TREKKER-MD:: Visitor's Count" /></p>
 
 </details>
 
 
 
-[`ℹ️Contact Owner`](https://api.giftedtech.my.id/contact)
+[`ℹ️Contact Owner`](https://t.me/trekkermd_)
  <br>
 <a href='https://github.com/mauricegift/gifted-pair-code/fork' target="_blank">
     <img alt='FORK REPO' src='https://img.shields.io/badge/-FORK REPO-black?style=for-the-badge&logo=github&logoColor=white'/>
@@ -109,7 +109,7 @@ const Gifted = GiftedConnect({
 <details>
 <summary>DEPLOYMENT</summary>
  
-<a href='https://dashboard.heroku.com/new?template=https://github.com/mauricegiftgifted-pair-code' target="_blank"><img alt='HEROKU DEPLOY' src='https://img.shields.io/badge/-HEROKU DEPLOY-black?style=for-the-badge&logo=heroku&logoColor=white'/>
+<a href='https://dashboard.heroku.com/new?template=https://github.com/mauricegift/gifted-pair-code' target="_blank"><img alt='HEROKU DEPLOY' src='https://img.shields.io/badge/-HEROKU DEPLOY-black?style=for-the-badge&logo=heroku&logoColor=white'/>
  <br>
 <a href='https://dashboard.render.com' target="_blank">
     <img alt='DEPLOY TO RENDER' src='https://img.shields.io/badge/-DEPLOY TO RENDER-black?style=for-the-badge&logo=render&logoColor=white'/>
@@ -121,9 +121,9 @@ const Gifted = GiftedConnect({
 
 </details>
 
-[`HERE'S AN EXAMPLE OUTPUT`](https://pairing.giftedtech.web.id)
+[`HERE'S AN EXAMPLE OUTPUT`](https://dc693d3f-99a0-4944-94cc-6b839418279c.e1-us-east-azure.choreoapps.dev)
 # `Owner`
 
- <a href="https://github.com/mauricegift"><img src="https://github.com/mauricegift.png" width="250" height="250" alt="Gifted Tech"/></a>
+ <a href="https://t.me/trekkermd_"><img src="https://github.com/mauricegift.png" width="250" height="250" alt="Trekker Tech"/></a>
 
    
