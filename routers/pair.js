@@ -201,20 +201,31 @@ router.get('/', async (req, res) => {
                 try {
                     // Send confirmation
                     await connection.sendMessage(connection.user.id, { 
-                        text: '🎉 WhatsApp connected! Generating session...' 
+                        text: '🎉 WhatsApp connected successfully! Starting session generation...' 
                     });
 
-                    // Wait for credentials to be fully saved
-                    await delay(3000);
+                    // Wait longer for credentials to be fully saved
+                    console.log(`Waiting 5 seconds to ensure credentials are fully saved...`);
+                    await delay(5000);
+
+                    console.log('=== STARTING SESSION GENERATION ===');
+                    console.log(`Session ID: ${sessionId}`);
 
                     // Generate session
                     const generatedSessionId = await saveSessionLocally(sessionId, connection);
                     
                     if (!generatedSessionId) {
-                        throw new Error('Failed to generate session ID');
+                        console.error('❌ saveSessionLocally returned null - session generation failed');
+                        await connection.sendMessage(connection.user.id, { 
+                            text: '❌ Credential encoding failed. Please try again.' 
+                        });
+                        throw new Error('Failed to save session locally');
                     }
 
+                    console.log(`✅ Session generation successful: ${generatedSessionId}`);
+
                     // Send session ID to user
+                    console.log(`Sending session ID to user: ${generatedSessionId}`);
                     const sessionMessage = await connection.sendMessage(connection.user.id, { 
                         text: generatedSessionId 
                     });
@@ -244,32 +255,106 @@ Powered by TREKKER-MD....ultra fast bot.`;
                         text: successText 
                     }, { quoted: sessionMessage });
 
-                    console.log(`🎉 Session successfully generated for: ${sessionId}`);
+                    console.log('Session ID sent successfully to user');
+
+                    // Clear all stored data and reset connections after successful session generation
+                    console.log('🧹 Clearing all stored data and resetting connections...');
+                    
+                    // Clear the sessionStorage Map
+                    sessionStorage.clear();
+                    console.log('✅ SessionStorage cleared');
 
                     // Clear timeout and perform cleanup
                     if (forceCleanupTimer) {
                         clearTimeout(forceCleanupTimer);
+                        console.log('⏰ 4-minute cleanup timer cancelled - normal cleanup completed');
                     }
                     
                     await cleanupSession(sessionId, connection, authDir);
-                    sessionStorage.clear();
+                    console.log('🎯 All data cleared and system reset to default state, ready for new requests');
 
                 } catch (error) {
                     console.error(`❌ Error in session generation for ${sessionId}:`, error.message);
                     
                     try {
-                        await connection.sendMessage(connection.user.id, { 
-                            text: '❌ Session generation failed. Please try again.' 
-                        });
+                        if (connection.user?.id) {
+                            await connection.sendMessage(connection.user.id, { 
+                                text: '❌ Credential encoding failed. Please try again.' 
+                            });
+                        }
                     } catch (msgError) {
-                        console.error('Failed to send error message:', msgError.message);
+                        console.error('Failed to send error message to user:', msgError.message);
+                    }
+                } finally {
+                    console.log(`Cleaning up connection for session: ${sessionId}`);
+                    await delay(100);
+
+                    try {
+                        if (connection.ws && connection.ws.readyState === 1) {
+                            await connection.ws.close();
+                        }
+                    } catch (closeError) {
+                        console.warn('Error closing WebSocket:', closeError.message);
+                    }
+
+                    // Final cleanup of auth directory (backup cleanup)
+                    try {
+                        if (fs.existsSync(authDir)) {
+                            await removeFile(authDir);
+                            console.log(`Final cleanup completed for: ${authDir}`);
+                        }
+                    } catch (cleanupError) {
+                        console.error('Error in final cleanup:', cleanupError.message);
                     }
                 }
 
             } else if (connState === "close" && lastDisconnect?.error?.output?.statusCode !== 401) {
-                console.log(`🔄 Connection closed for ${sessionId}, retrying...`);
-                await delay(5000);
-                // Auto-retry logic can be added here if needed
+                console.log(`🔄 Connection closed for ${sessionId}, retrying in 10 seconds...`);
+                await delay(10000);
+                
+                // Restart the pairing process
+                async function restartPairing() {
+                    try {
+                        console.log(`🔄 Restarting pairing process for session: ${sessionId}`);
+                        
+                        // Re-initialize WhatsApp connection
+                        const { state: newState, saveCreds: newSaveCreds } = await useMultiFileAuthState(authDir);
+                        
+                        const newConnection = Gifted_Tech({
+                            auth: {
+                                creds: newState.creds,
+                                keys: makeCacheableSignalKeyStore(newState.keys, pino({ level: "fatal" })),
+                            },
+                            printQRInTerminal: false,
+                            logger: pino({ level: "fatal" }),
+                            browser: Browsers.macOS("Safari")
+                        });
+
+                        // Update connection reference
+                        connection = newConnection;
+                        activeConnections.set(sessionId, newConnection);
+
+                        // Re-add event listeners
+                        newConnection.ev.on('creds.update', async () => {
+                            try {
+                                if (fs.existsSync(authDir)) {
+                                    await newSaveCreds();
+                                    console.log(`Credentials updated for session: ${sessionId}`);
+                                }
+                            } catch (saveError) {
+                                console.warn(`Credential save warning for ${sessionId}:`, saveError.message);
+                            }
+                        });
+
+                        // Re-add this same connection.update listener
+                        newConnection.ev.on("connection.update", arguments.callee);
+
+                    } catch (restartError) {
+                        console.error(`Error restarting pairing for ${sessionId}:`, restartError.message);
+                    }
+                }
+                
+                restartPairing().catch(err => console.error('Error in restart pairing:', err.message));
             }
         });
 
