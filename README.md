@@ -124,6 +124,6 @@ const Trekker = TrekkerConnect({
 [`HERE'S AN EXAMPLE OUTPUT`](https://dc693d3f-99a0-4944-94cc-6b839418279c.e1-us-east-azure.choreoapps.dev)
 # `Owner`
 
- <a href="https://t.me/trekkermd_"><img src="https://github.com/mauricegift.png" width="250" height="250" alt="Trekker Tech"/></a>
+ <a href="https://t.me/trekkermd_"><img src="https://i.postimg.cc/0Nrf4fxL/IMG-20250419-131400-618.jpg" width="250" height="250" alt="Trekker Tech"/></a>
 
    
