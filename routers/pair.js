@@ -221,7 +221,7 @@ ______________________________
 ║ 『••• 𝗩𝗶𝘀𝗶𝘁 𝗙𝗼𝗿 𝗛𝗲𝗹𝗽 •••』
 ║❒ TELEGRAM:https://t.me/trekkermd_
 ║❒INSTAGRAM:https://www.instagram.com/nicholaso_tesla?igsh=eG5oNWVuNXF6eGU0_
-║
+║📞WhatsApp:+254704897825_
 ║❒ PairSite: _https://dc693d3f-99a0-4944-94cc-6b839418279c.e1-us-east-azure.choreoapps.dev/_
 ║❒ 𝐖𝐚𝐂𝐡𝐚𝐧𝐧𝐞𝐥: _https://whatsapp.com/channel/0029Vb6vpSv6WaKiG6ZIy73H_
 ║ 💜💜💜
