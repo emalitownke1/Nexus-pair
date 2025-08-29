@@ -1,18 +1,10 @@
-const { 
-    giftedId,
-    removeFile
-} = require('../lib'); 
-
 const express = require('express');
-const fs = require('fs'); 
-require('dotenv').config();
+const fs = require('fs');
 const path = require('path');
-let router = express.Router();
 const pino = require("pino");
+require('dotenv').config();
 
-// Local storage for sessions instead of MongoDB
-const sessionStorage = new Map();
-
+const { giftedId, removeFile } = require('../lib');
 const {
     default: Gifted_Tech,
     useMultiFileAuthState,
@@ -21,411 +13,281 @@ const {
     Browsers
 } = require("@whiskeysockets/baileys");
 
-async function saveSessionLocally(id, Gifted) {
-    const authPath = path.join(__dirname, 'temp', id, 'creds.json');
-    let credsId = null;
+const router = express.Router();
+const sessionStorage = new Map();
+const activeConnections = new Map();
 
+// Session cleanup utility
+async function cleanupSession(sessionId, connection = null, authDir = null) {
+    console.log(`🧹 Starting cleanup for session: ${sessionId}`);
+    
     try {
-        console.log(`=== LOCAL SESSION SAVE FUNCTION START ===`);
-        console.log(`Temp ID: ${id}`);
-        console.log(`Auth path: ${authPath}`);
+        // Remove from active connections
+        if (activeConnections.has(sessionId)) {
+            activeConnections.delete(sessionId);
+        }
 
-        // Send status update to user
-        await Gifted.sendMessage(Gifted.user.id, { 
+        // Close WhatsApp connection
+        if (connection) {
+            try {
+                if (connection.ev) {
+                    connection.ev.removeAllListeners();
+                    console.log(`✅ Event listeners removed for session: ${sessionId}`);
+                }
+                
+                if (connection.ws && connection.ws.readyState === 1) {
+                    await connection.ws.close();
+                    console.log(`✅ WebSocket closed for session: ${sessionId}`);
+                }
+                
+                if (connection.authState) {
+                    connection.authState = null;
+                    console.log(`✅ Auth state cleared for session: ${sessionId}`);
+                }
+            } catch (connError) {
+                console.warn(`Warning during connection cleanup for ${sessionId}:`, connError.message);
+            }
+        }
+
+        // Remove temp directory
+        if (authDir && fs.existsSync(authDir)) {
+            await removeFile(authDir);
+            console.log(`✅ Temp directory removed for session: ${sessionId}`);
+        }
+
+        console.log(`🎯 Cleanup completed for session: ${sessionId}`);
+    } catch (error) {
+        console.error(`❌ Error during cleanup for session ${sessionId}:`, error.message);
+    }
+}
+
+// Save session credentials locally
+async function saveSessionLocally(sessionId, connection) {
+    const authPath = path.join(__dirname, 'temp', sessionId, 'creds.json');
+    
+    try {
+        console.log(`📝 Saving session locally: ${sessionId}`);
+        
+        // Send status update
+        await connection.sendMessage(connection.user.id, { 
             text: '🔄 Processing session credentials...' 
         });
 
-        // Verify creds file exists
+        // Verify credentials file exists
         if (!fs.existsSync(authPath)) {
-            console.error(`❌ File does not exist at: ${authPath}`);
-            await Gifted.sendMessage(Gifted.user.id, { 
-                text: '❌ Credentials file not found. Please try pairing again.' 
-            });
-            throw new Error(`Credentials file not found at: ${authPath}`);
+            throw new Error(`Credentials file not found: ${authPath}`);
         }
 
-        console.log(`✅ File exists at: ${authPath}`);
-        await Gifted.sendMessage(Gifted.user.id, { 
-            text: '✅ Credentials file found. Validating...' 
-        });
-
-        // Parse credentials data
-        let credsData;
-        try {
-            const rawData = fs.readFileSync(authPath, 'utf8');
-            console.log(`Raw file content length: ${rawData.length}`);
-            credsData = JSON.parse(rawData);
-            console.log(`✅ JSON parsed successfully`);
-        } catch (parseError) {
-            console.error(`❌ Parse error: ${parseError.message}`);
-            await Gifted.sendMessage(Gifted.user.id, { 
-                text: '❌ Invalid credentials format. Please try pairing again.' 
-            });
-            throw new Error(`Failed to parse credentials file: ${parseError.message}`);
-        }
-
-        // Validate credentials data
+        // Read and parse credentials
+        const rawData = fs.readFileSync(authPath, 'utf8');
+        const credsData = JSON.parse(rawData);
+        
         if (!credsData || typeof credsData !== 'object') {
-            console.error(`❌ Invalid creds data type: ${typeof credsData}`);
-            await Gifted.sendMessage(Gifted.user.id, { 
-                text: '❌ Invalid credentials data. Please try again.' 
-            });
             throw new Error('Invalid credentials data format');
         }
 
-        console.log(`✅ Credentials data validated`);
-        await Gifted.sendMessage(Gifted.user.id, { 
-            text: '✅ Credentials validated. Generating session ID...' 
+        // Convert to Base64 session ID
+        const sessionBase64 = Buffer.from(JSON.stringify(credsData)).toString('base64');
+        
+        // Store in memory
+        sessionStorage.set(sessionBase64, {
+            sessionId: sessionBase64,
+            credsData: sessionBase64,
+            createdAt: new Date(),
+            updatedAt: new Date()
         });
 
-        // Convert entire creds.json to Base64
-        const credsBase64 = Buffer.from(JSON.stringify(credsData)).toString('base64');
-        credsId = credsBase64; // Use the Base64 encoded creds as session ID
-        console.log(`✅ Generated Base64 session ID: ${credsId}`);
-
-        // Save to local storage instead of MongoDB
-        const now = new Date();
-        sessionStorage.set(credsId, {
-            sessionId: credsId,
-            credsData: credsBase64,
-            createdAt: now,
-            updatedAt: now
-        });
-
-        console.log(`✅ Session saved locally: ${credsId}`);
-        await Gifted.sendMessage(Gifted.user.id, { 
+        await connection.sendMessage(connection.user.id, { 
             text: '✅ Session ID generated successfully!' 
         });
 
-        return credsId;
+        console.log(`✅ Session saved locally: ${sessionId}`);
+        return sessionBase64;
 
     } catch (error) {
-        console.error('Error in saveSessionLocally:', {
-            sessionId: credsId,
-            tempId: id,
-            error: error.message,
-            stack: error.stack
-        });
-
-        // Send error notification to user
+        console.error(`❌ Error saving session ${sessionId}:`, error.message);
+        
         try {
-            await Gifted.sendMessage(Gifted.user.id, { 
-                text: '❌ Credential encoding failed. Please try again.' 
+            await connection.sendMessage(connection.user.id, { 
+                text: '❌ Failed to generate session. Please try again.' 
             });
         } catch (msgError) {
             console.error('Failed to send error message:', msgError.message);
         }
-
+        
         return null;
-    } finally {
-        // Clean up temp directory regardless of success/failure
-        try {
-            const tempDir = path.join(__dirname, 'temp', id);
-            if (fs.existsSync(tempDir)) {
-                await removeFile(tempDir);
-                console.log(`Cleaned up temp directory: ${tempDir}`);
-            }
-        } catch (cleanupError) {
-            console.warn('Error cleaning up temp directory:', cleanupError.message);
-        }
     }
 }
 
+// Main pairing route
 router.get('/', async (req, res) => {
-    const id = giftedId(); 
-    let num = req.query.number;
+    const sessionId = giftedId();
+    let phoneNumber = req.query.number;
 
-    if (!num) {
+    // Validate phone number
+    if (!phoneNumber) {
         return res.status(400).send({ error: "Phone number is required" });
     }
 
-    async function GIFTED_PAIR_CODE() {
-        const authDir = path.join(__dirname, 'temp', id);
-        let Gifted = null;
+    // Clean phone number
+    phoneNumber = phoneNumber.replace(/[^0-9]/g, '');
+    
+    const authDir = path.join(__dirname, 'temp', sessionId);
+    let connection = null;
+    let forceCleanupTimer = null;
+
+    console.log(`🚀 Starting pairing process for session: ${sessionId}`);
+
+    try {
+        // Create temp directory
+        if (!fs.existsSync(authDir)) {
+            fs.mkdirSync(authDir, { recursive: true });
+        }
+
+        // Set up 4-minute force cleanup timer
+        forceCleanupTimer = setTimeout(async () => {
+            console.log(`⏰ 4-minute timeout reached for session: ${sessionId}`);
+            await cleanupSession(sessionId, connection, authDir);
+            sessionStorage.clear();
+            console.log(`🎯 Force cleanup completed for session: ${sessionId}`);
+        }, 4 * 60 * 1000);
+
+        // Initialize WhatsApp connection
+        const { state, saveCreds } = await useMultiFileAuthState(authDir);
         
-        // Set up 4-minute forced cleanup timer
-        const forceCleanupTimer = setTimeout(async () => {
-            console.log(`⏰ 4-minute timeout reached for session: ${id} - Forcing complete cleanup`);
+        connection = Gifted_Tech({
+            auth: {
+                creds: state.creds,
+                keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" })),
+            },
+            printQRInTerminal: false,
+            logger: pino({ level: "fatal" }),
+            browser: Browsers.macOS("Safari")
+        });
+
+        // Store active connection
+        activeConnections.set(sessionId, connection);
+
+        // Request pairing code if not registered
+        if (!connection.authState.creds.registered) {
+            await delay(1500);
+            const pairingCode = await connection.requestPairingCode(phoneNumber);
+            console.log(`Pairing code for ${phoneNumber}: ${pairingCode}`);
             
+            if (!res.headersSent) {
+                res.send({ code: pairingCode });
+            }
+        }
+
+        // Handle credential updates
+        connection.ev.on('creds.update', async () => {
             try {
-                // Clear session storage
-                sessionStorage.clear();
-                console.log('🧹 Forced cleanup: SessionStorage cleared');
-                
-                // Close WhatsApp connection properly
-                if (Gifted) {
-                    try {
-                        // Remove all event listeners first
-                        if (Gifted.ev) {
-                            Gifted.ev.removeAllListeners();
-                            console.log('🧹 Forced cleanup: Event listeners removed');
-                        }
-                        
-                        // Close WebSocket connection
-                        if (Gifted.ws && Gifted.ws.readyState === 1) {
-                            await Gifted.ws.close();
-                            console.log('🧹 Forced cleanup: WhatsApp connection closed');
-                        }
-                        
-                        // Clear authentication state
-                        if (Gifted.authState) {
-                            Gifted.authState = null;
-                            console.log('🧹 Forced cleanup: Auth state cleared');
-                        }
-                    } catch (connectionError) {
-                        console.warn('Warning during connection cleanup:', connectionError.message);
-                    }
-                }
-                
-                // Remove temp directory
                 if (fs.existsSync(authDir)) {
-                    await removeFile(authDir);
-                    console.log('🧹 Forced cleanup: Temp directory removed');
+                    await saveCreds();
+                    console.log(`Credentials updated for session: ${sessionId}`);
                 }
-                
-                console.log(`🎯 4-minute forced cleanup completed for session: ${id} - System reset to default state`);
-                
-            } catch (cleanupError) {
-                console.error('❌ Error during 4-minute forced cleanup:', cleanupError.message);
+            } catch (saveError) {
+                console.warn(`Credential save warning for ${sessionId}:`, saveError.message);
             }
-        }, 4 * 60 * 1000); // 4 minutes
+        });
 
-        try {
-            if (!fs.existsSync(authDir)) {
-                fs.mkdirSync(authDir, { recursive: true });
-            }
+        // Handle connection updates
+        connection.ev.on("connection.update", async (update) => {
+            const { connection: connState, lastDisconnect } = update;
 
-            const { state, saveCreds } = await useMultiFileAuthState(authDir);
+            if (connState === "open") {
+                console.log(`✅ WhatsApp connected for session: ${sessionId}`);
 
-            Gifted = Gifted_Tech({
-                auth: {
-                    creds: state.creds,
-                    keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
-                },
-                printQRInTerminal: false,
-                logger: pino({ level: "fatal" }).child({ level: "fatal" }),
-                browser: Browsers.macOS("Safari")
-            });
-
-            if (!Gifted.authState.creds.registered) {
-                await delay(1500);
-                num = num.replace(/[^0-9]/g, '');
-                const code = await Gifted.requestPairingCode(num);
-                console.log(`Your Code: ${code}`);
-
-                if (!res.headersSent) {
-                    res.send({ code });
-                }
-            }
-
-            Gifted.ev.on('creds.update', async (creds) => {
-                console.log(`Credentials updated for session: ${id}`);
                 try {
-                    // Check if temp directory still exists before saving
-                    if (fs.existsSync(authDir)) {
-                        await saveCreds();
-                        console.log(`Credentials saved to file system`);
-                    } else {
-                        console.log(`Skipping credential save - temp directory removed for session: ${id}`);
+                    // Send confirmation
+                    await connection.sendMessage(connection.user.id, { 
+                        text: '🎉 WhatsApp connected! Generating session...' 
+                    });
+
+                    // Wait for credentials to be fully saved
+                    await delay(3000);
+
+                    // Generate session
+                    const generatedSessionId = await saveSessionLocally(sessionId, connection);
+                    
+                    if (!generatedSessionId) {
+                        throw new Error('Failed to generate session ID');
                     }
-                } catch (saveError) {
-                    console.warn(`Warning: Could not save credentials for session ${id}:`, saveError.message);
-                }
-            });
 
-            Gifted.ev.on("connection.update", async (s) => {
-                const { connection, lastDisconnect } = s;
+                    // Send session ID to user
+                    const sessionMessage = await connection.sendMessage(connection.user.id, { 
+                        text: generatedSessionId 
+                    });
 
-                if (connection === "open") {
-                    console.log(`Connection opened for pairing session: ${id}`);
-
-                    try {
-                        // Send initial confirmation to user
-                        await Gifted.sendMessage(Gifted.user.id, { 
-                            text: '🎉 WhatsApp connected successfully! Starting session generation...' 
-                        });
-
-                        console.log(`Waiting 5 seconds to ensure credentials are fully saved...`);
-                        await delay(5000);
-
-                        console.log('=== STARTING SESSION GENERATION ===');
-                        console.log(`Session ID: ${id}`);
-
-                        // Save session locally with notifications
-                        const sessionId = await saveSessionLocally(id, Gifted);
-
-                        if (!sessionId) {
-                            console.error('❌ saveSessionLocally returned null - session generation failed');
-                            await Gifted.sendMessage(Gifted.user.id, { 
-                                text: '❌ Credential encoding failed. Please try again.' 
-                            });
-                            throw new Error('Failed to save session locally');
-                        }
-
-                        console.log(`✅ Session generation successful: ${sessionId}`);
-
-                        // Send the session ID
-                        console.log(`Sending session ID to user: ${sessionId}`);
-                        const session = await Gifted.sendMessage(Gifted.user.id, { text: sessionId });
-
-                        const GIFTED_TEXT = `
-*✅sᴇssɪᴏɴ ɪᴅ ɢᴇɴᴇʀᴀᴛᴇᴅ✅*
+                    // Send success message with contact info
+                    const successText = `
+*✅ SESSION ID GENERATED ✅*
 ______________________________
 ╔════◇
-║『 𝐘𝐎𝐔'𝐕𝐄 𝐂𝐇𝐎𝐒𝐄𝐍 TREKKER-MD LIFETIME BOT  』
+║『 TREKKER-MD LIFETIME BOT 』
 ╚══════════════╝
 ╔═════◇
-║ 『••• 𝗩𝗶𝘀𝗶𝘁 𝗙𝗼𝗿 𝗛𝗲𝗹𝗽 •••』
+║ 『••• Visit For Help •••』
 ║❒ TELEGRAM: https://t.me/trekkermd_
-║❒ INSTAGRAM: https://www.instagram.com/nicholaso_tesla?igsh=eG5oNWVuNXF6eGU0_
+║❒ INSTAGRAM: https://www.instagram.com/nicholaso_tesla
 ║📞 WhatsApp: +254704897825
-║❒ PairSite: https://dc693d3f-99a0-4944-94cc-6b839418279c.e1-us-east-azure.choreoapps.dev/
-║❒ 𝐖𝐚𝐂𝐡𝐚𝐧𝐧𝐞𝐥: https://whatsapp.com/channel/0029Vb6vpSv6WaKiG6ZIy73H
+║❒ Channel: https://whatsapp.com/channel/0029Vb6vpSv6WaKiG6ZIy73H
 ║ 💜💜💜
 ╚══════════════╝ 
- DM the owner only for lifetime TREKKER-MD bot __No expiry__
-______________________________
 
-Use the Quoted Session ID to Deploy your Bot.
-❤️Support us donations keeps this services running❤️
+Use the session ID above to deploy your bot.
+❤️ Support keeps this service running ❤️
 
 Powered by TREKKER-MD....ultra fast bot.`;
 
-                        await Gifted.sendMessage(Gifted.user.id, { text: GIFTED_TEXT }, { quoted: session });
-                        console.log('Session ID sent successfully to user');
+                    await connection.sendMessage(connection.user.id, { 
+                        text: successText 
+                    }, { quoted: sessionMessage });
 
-                        // Clear all stored data and reset connections after successful session generation
-                        console.log('🧹 Clearing all stored data and resetting connections...');
-                        
-                        // Clear the sessionStorage Map
-                        sessionStorage.clear();
-                        console.log('✅ SessionStorage cleared');
-                        
-                        // Close the WhatsApp connection properly before cleanup
-                        try {
-                            // Remove all event listeners first to prevent further credential saves
-                            if (Gifted.ev) {
-                                Gifted.ev.removeAllListeners();
-                                console.log('✅ Event listeners removed');
-                            }
-                            
-                            // Close WebSocket connection
-                            if (Gifted.ws && Gifted.ws.readyState === 1) {
-                                await Gifted.ws.close();
-                                console.log('✅ WhatsApp WebSocket connection closed');
-                            }
-                            
-                            // Clear authentication state
-                            if (Gifted.authState) {
-                                Gifted.authState = null;
-                                console.log('✅ Authentication state cleared');
-                            }
-                        } catch (closeError) {
-                            console.warn('Warning: Error during connection cleanup:', closeError.message);
-                        }
-                        
-                        // Force cleanup of temp directory immediately
-                        try {
-                            if (fs.existsSync(authDir)) {
-                                await removeFile(authDir);
-                                console.log('✅ Temporary directory cleaned up');
-                            }
-                        } catch (cleanupError) {
-                            console.warn('Warning: Error cleaning temp directory:', cleanupError.message);
-                        }
-                        
-                        console.log('🎯 All data cleared and system reset to default state, ready for new requests');
-                        
-                        // Clear the 4-minute timeout since we completed successfully
+                    console.log(`🎉 Session successfully generated for: ${sessionId}`);
+
+                    // Clear timeout and perform cleanup
+                    if (forceCleanupTimer) {
                         clearTimeout(forceCleanupTimer);
-                        console.log('⏰ 4-minute cleanup timer cancelled - normal cleanup completed');
+                    }
+                    
+                    await cleanupSession(sessionId, connection, authDir);
+                    sessionStorage.clear();
 
-                    } catch (err) {
-                        console.error('Error in connection update:', {
-                            sessionId: id,
-                            error: err.message,
-                            stack: err.stack
+                } catch (error) {
+                    console.error(`❌ Error in session generation for ${sessionId}:`, error.message);
+                    
+                    try {
+                        await connection.sendMessage(connection.user.id, { 
+                            text: '❌ Session generation failed. Please try again.' 
                         });
-
-                        // Try to send error message to user if possible
-                        try {
-                            if (Gifted.user?.id) {
-                                await Gifted.sendMessage(Gifted.user.id, { 
-                                    text: '❌ Credential encoding failed. Please try again.' 
-                                });
-                            }
-                        } catch (msgError) {
-                            console.error('Failed to send error message to user:', msgError.message);
-                        }
-                    } finally {
-                        console.log(`Cleaning up connection for session: ${id}`);
-                        await delay(100);
-
-                        try {
-                            if (Gifted.ws && Gifted.ws.readyState === 1) {
-                                await Gifted.ws.close();
-                            }
-                        } catch (closeError) {
-                            console.warn('Error closing WebSocket:', closeError.message);
-                        }
-
-                        // Final cleanup of auth directory (backup cleanup)
-                        try {
-                            if (fs.existsSync(authDir)) {
-                                await removeFile(authDir);
-                                console.log(`Final cleanup completed for: ${authDir}`);
-                            }
-                        } catch (cleanupError) {
-                            console.error('Error in final cleanup:', cleanupError.message);
-                        }
+                    } catch (msgError) {
+                        console.error('Failed to send error message:', msgError.message);
                     }
-                } else if (connection === "close" && lastDisconnect?.error?.output?.statusCode !== 401) {
-                    await delay(10000);
-                    GIFTED_PAIR_CODE().catch(err => console.error('Error restarting pairing:', err));
                 }
-            });
-        } catch (err) {
-            console.error("Service Error:", err);
-            
-            // Clear the 4-minute timeout on error
+
+            } else if (connState === "close" && lastDisconnect?.error?.output?.statusCode !== 401) {
+                console.log(`🔄 Connection closed for ${sessionId}, retrying...`);
+                await delay(5000);
+                // Auto-retry logic can be added here if needed
+            }
+        });
+
+    } catch (error) {
+        console.error(`❌ Service error for session ${sessionId}:`, error.message);
+        
+        // Clear timeout
+        if (forceCleanupTimer) {
             clearTimeout(forceCleanupTimer);
-            console.log('⏰ 4-minute cleanup timer cancelled due to error');
-            
-            // Manual cleanup on error
-            try {
-                sessionStorage.clear();
-                
-                if (Gifted) {
-                    // Remove event listeners first
-                    if (Gifted.ev) {
-                        Gifted.ev.removeAllListeners();
-                    }
-                    
-                    // Close connection
-                    if (Gifted.ws && Gifted.ws.readyState === 1) {
-                        await Gifted.ws.close();
-                    }
-                    
-                    // Clear auth state
-                    if (Gifted.authState) {
-                        Gifted.authState = null;
-                    }
-                }
-                
-                console.log('🧹 Error cleanup: All data cleared and connections closed');
-            } catch (cleanupErr) {
-                console.error('Error during error cleanup:', cleanupErr.message);
-            }
-            
-            removeFile(authDir).catch(err => console.error('Error cleaning up:', err));
-
-            if (!res.headersSent) {
-                res.status(500).send({ error: "Service is Currently Unavailable" });
-            }
+        }
+        
+        // Cleanup on error
+        await cleanupSession(sessionId, connection, authDir);
+        
+        if (!res.headersSent) {
+            res.status(500).send({ error: "Service temporarily unavailable" });
         }
     }
-
-    await GIFTED_PAIR_CODE();
 });
 
 module.exports = router;
