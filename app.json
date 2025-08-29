@@ -1,9 +1,9 @@
 {
-    "name": "TREKKER Session Generator",
-    "description": "TREKKER-MD Session Generator",
+    "name": "Gifted Session Generator",
+    "description": "Web Session Generator",
     "logo": "https://files.catbox.moe/52699c.jpg",
     "repository": "https://github.com/mauricegift/gifted-pair-code",
-    "keywords": ["TREKKER-MD"],
+    "keywords": ["Gifted-Tech"],
     "success_url": "/", 
     "buildpacks": [{ "url": "https://github.com/heroku/heroku-buildpack-nodejs#latest" } ],
     "env": {      

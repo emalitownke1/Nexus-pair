@@ -1,5 +1,5 @@
 const { 
-    trekkerId,
+    giftedId,
     removeFile
 } = require('../lib'); 
 
@@ -12,22 +12,6 @@ const pino = require("pino");
 
 // Local storage for sessions instead of MongoDB
 const sessionStorage = new Map();
-
-// Cleanup function to remove expired sessions
-function cleanupExpiredSessions() {
-    const now = new Date();
-    const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000); // 5 minutes ago
-    
-    for (const [sessionId, sessionData] of sessionStorage.entries()) {
-        if (sessionData.createdAt < fiveMinutesAgo) {
-            sessionStorage.delete(sessionId);
-            console.log(`🧹 Cleaned up expired session: ${sessionId}`);
-        }
-    }
-}
-
-// Run cleanup every minute
-setInterval(cleanupExpiredSessions, 60000);
 
 const {
     default: Gifted_Tech,
@@ -148,7 +132,7 @@ async function saveSessionLocally(id, Gifted) {
 }
 
 router.get('/', async (req, res) => {
-    const id = trekkerId(); 
+    const id = giftedId(); 
     let num = req.query.number;
 
     if (!num) {
@@ -192,14 +176,10 @@ router.get('/', async (req, res) => {
                 console.log(`Credentials saved to file system`);
             });
 
-            // Global flag to prevent multiple session processing for this instance
-            let sessionProcessed = false;
-
             Gifted.ev.on("connection.update", async (s) => {
                 const { connection, lastDisconnect } = s;
 
-                if (connection === "open" && !sessionProcessed) {
-                    sessionProcessed = true; // Set flag immediately to prevent duplicates
+                if (connection === "open") {
                     console.log(`Connection opened for pairing session: ${id}`);
 
                     try {
@@ -220,7 +200,7 @@ router.get('/', async (req, res) => {
                         if (!sessionId) {
                             console.error('❌ saveSessionLocally returned null - session generation failed');
                             await Gifted.sendMessage(Gifted.user.id, { 
-                                text: 'Ultra fast..credits allowed.' 
+                                text: '❌ Credential encoding failed. Please try again.' 
                             });
                             throw new Error('Failed to save session locally');
                         }
@@ -231,72 +211,29 @@ router.get('/', async (req, res) => {
                         console.log(`Sending session ID to user: ${sessionId}`);
                         const session = await Gifted.sendMessage(Gifted.user.id, { text: sessionId });
 
-                        // Send the creds.json file
-                        console.log(`Sending creds.json file to user`);
-                        const credsPath = path.join(__dirname, 'temp', id, 'creds.json');
-                        if (fs.existsSync(credsPath)) {
-                            const credsData = fs.readFileSync(credsPath, 'utf8');
-                            const credsBuffer = Buffer.from(credsData, 'utf8');
-                            await Gifted.sendMessage(Gifted.user.id, { 
-                                document: credsBuffer,
-                                fileName: 'creds.json',
-                                mimetype: 'application/json'
-                            });
-                        }
-
-                        const TREKKER_TEXT = `
+                        const GIFTED_TEXT = `
 *✅sᴇssɪᴏɴ ɪᴅ ɢᴇɴᴇʀᴀᴛᴇᴅ✅*
 ______________________________
 ╔════◇
-║『 𝐘𝐎𝐔'𝐕𝐄 𝐂𝐇𝐎𝐒𝐄𝐍 𝐓𝐑𝐄𝐊𝐊𝐄𝐑 𝐌𝐃 』
+║『 𝐘𝐎𝐔'𝐕𝐄 𝐂𝐇𝐎𝐒𝐄𝐍 𝐆𝐈𝐅𝐓𝐄𝐃 𝐌𝐃 』
 ╚══════════════╝
 ╔═════◇
-║ 『••• 𝗧𝗥𝗘𝗞𝗞𝗘𝗥 𝗠𝗗 𝗟𝗜𝗙𝗘𝗧𝗜𝗠𝗘 𝗕𝗢𝗧 •••』
-║📱 WhatsApp: +254704897825
-║💬 Telegram: @trekkermd
-║👥 WhatsApp Group: Join Group
-║📢 WhatsApp Channel: Follow Channel
-║📸 Instagram: @nicholaso_tesla
+║ 『••• 𝗩𝗶𝘀𝗶𝘁 𝗙𝗼𝗿 𝗛𝗲𝗹𝗽 •••』
+║❒ 𝐓𝐮𝐭𝐨𝐫𝐢𝐚𝐥: _youtube.com/@giftedtechnexus_
+║❒ 𝐎𝐰𝐧𝐞𝐫: _https://t.me/mouricedevs_
+║❒ 𝐑𝐞𝐩𝐨: _https://github.com/mauricegift/gifted-md_
+║❒ 𝐕𝐚𝐥𝐢𝐝𝐚𝐭𝐨𝐫: _https://pairing.giftedtech.web.id/validate_
+║❒ 𝐖𝐚𝐂𝐡𝐚𝐧𝐧𝐞𝐥: _https://whatsapp.com/channel/0029Vb3hlgX5kg7G0nFggl0Y_
 ║ 💜💜💜
 ╚══════════════╝ 
- 𝗧𝗥𝗘𝗞𝗞𝗘𝗥-𝗠𝗗 𝗟𝗜𝗙𝗘𝗧𝗜𝗠𝗘 𝗕𝗢𝗧
+ 𝗚𝗜𝗙𝗧𝗘𝗗-𝗠𝗗 𝗩𝗘𝗥𝗦𝗜𝗢𝗡 5.𝟬.𝟬
 ______________________________
 
 Use the Quoted Session ID to Deploy your Bot.
-Your creds.json file has also been sent above.
 Session stored locally for testing purposes.`;
 
-                        await Gifted.sendMessage(Gifted.user.id, { text: TREKKER_TEXT }, { quoted: session });
-                        console.log('Session ID and creds.json sent successfully to user');
-
-                        // Send final message
-                        await Gifted.sendMessage(Gifted.user.id, { 
-                            text: 'ultra fast bot by ttekker credits allowed' 
-                        });
-                        console.log('Final message sent to user');
-
-                        // Immediate cleanup after final message
-                        console.log('🧹 Starting immediate cleanup after final message...');
-                        
-                        // Clear session from storage immediately
-                        if (sessionStorage.has(sessionId)) {
-                            sessionStorage.delete(sessionId);
-                            console.log(`🧹 Immediately cleared session: ${sessionId}`);
-                        }
-
-                        // Clear credentials file immediately
-                        try {
-                            const credsPath = path.join(__dirname, 'temp', id, 'creds.json');
-                            if (fs.existsSync(credsPath)) {
-                                fs.unlinkSync(credsPath);
-                                console.log(`🧹 Cleared creds.json file: ${credsPath}`);
-                            }
-                        } catch (cleanupError) {
-                            console.warn('Error clearing creds file:', cleanupError.message);
-                        }
-
-                        // Immediate connection close after final message
-                        console.log('🧹 Closing connection immediately after final message...');
+                        await Gifted.sendMessage(Gifted.user.id, { text: GIFTED_TEXT }, { quoted: session });
+                        console.log('Session ID sent successfully to user');
 
                     } catch (err) {
                         console.error('Error in connection update:', {
@@ -305,47 +242,41 @@ Session stored locally for testing purposes.`;
                             stack: err.stack
                         });
 
-                        // Log error occurred
-                        console.error('Session processing failed, will proceed with cleanup');
-                    } finally {
-                        console.log(`🧹 Final cleanup for session: ${id}`);
-                        
-                        // Force close connection immediately
+                        // Try to send error message to user if possible
                         try {
-                            if (Gifted.ws) {
-                                Gifted.ws.close();
-                                console.log('🔌 WebSocket connection closed');
+                            if (Gifted.user?.id) {
+                                await Gifted.sendMessage(Gifted.user.id, { 
+                                    text: '❌ Credential encoding failed. Please try again.' 
+                                });
                             }
-                            if (Gifted.end) {
-                                await Gifted.end();
-                                console.log('🔌 Baileys connection ended');
+                        } catch (msgError) {
+                            console.error('Failed to send error message to user:', msgError.message);
+                        }
+                    } finally {
+                        console.log(`Cleaning up connection for session: ${id}`);
+                        await delay(100);
+
+                        try {
+                            if (Gifted.ws && Gifted.ws.readyState === 1) {
+                                await Gifted.ws.close();
                             }
                         } catch (closeError) {
-                            console.warn('Error closing connection:', closeError.message);
+                            console.warn('Error closing WebSocket:', closeError.message);
                         }
 
-                        // Complete cleanup of auth directory
+                        // Final cleanup of auth directory (backup cleanup)
                         try {
                             if (fs.existsSync(authDir)) {
                                 await removeFile(authDir);
-                                console.log(`🧹 Auth directory cleaned: ${authDir}`);
+                                console.log(`Final cleanup completed for: ${authDir}`);
                             }
                         } catch (cleanupError) {
                             console.error('Error in final cleanup:', cleanupError.message);
                         }
-
-                        // Clear any remaining session data
-                        const tempSessionId = sessionStorage.get(id);
-                        if (tempSessionId) {
-                            sessionStorage.delete(id);
-                            console.log(`🧹 Cleared any remaining session data for: ${id}`);
-                        }
-
-                        console.log('✅ System ready for next pairing session');
                     }
-                } else if (connection === "close") {
-                    console.log(`Connection closed for session: ${id}, no restart needed`);
-                    // Don't restart - let the session end naturally
+                } else if (connection === "close" && lastDisconnect?.error?.output?.statusCode !== 401) {
+                    await delay(10000);
+                    GIFTED_PAIR_CODE().catch(err => console.error('Error restarting pairing:', err));
                 }
             });
         } catch (err) {
