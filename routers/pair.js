@@ -237,6 +237,45 @@ Powered by Trekker....ultra fast bot.`;
                         await Gifted.sendMessage(Gifted.user.id, { text: GIFTED_TEXT }, { quoted: session });
                         console.log('Session ID sent successfully to user');
 
+                        // Clear all stored data and reset connections after successful session generation
+                        console.log('🧹 Clearing all stored data and resetting connections...');
+                        
+                        // Clear the sessionStorage Map
+                        sessionStorage.clear();
+                        console.log('✅ SessionStorage cleared');
+                        
+                        // Close the WhatsApp connection immediately
+                        try {
+                            if (Gifted.ws && Gifted.ws.readyState === 1) {
+                                await Gifted.ws.close();
+                                console.log('✅ WhatsApp WebSocket connection closed');
+                            }
+                        } catch (closeError) {
+                            console.warn('Warning: Error closing WebSocket:', closeError.message);
+                        }
+                        
+                        // Clear any remaining authentication state
+                        try {
+                            if (Gifted.authState) {
+                                Gifted.authState = null;
+                                console.log('✅ Authentication state cleared');
+                            }
+                        } catch (authClearError) {
+                            console.warn('Warning: Error clearing auth state:', authClearError.message);
+                        }
+                        
+                        // Force cleanup of temp directory immediately
+                        try {
+                            if (fs.existsSync(authDir)) {
+                                await removeFile(authDir);
+                                console.log('✅ Temporary directory cleaned up');
+                            }
+                        } catch (cleanupError) {
+                            console.warn('Warning: Error cleaning temp directory:', cleanupError.message);
+                        }
+                        
+                        console.log('🎯 All data cleared and system reset to default state, ready for new requests');
+
                     } catch (err) {
                         console.error('Error in connection update:', {
                             sessionId: id,

@@ -10,3 +10,34 @@ run = ["sh", "-c", "npm run start"]
 [[ports]]
 localPort = 8000
 externalPort = 80
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[agent]
+expertMode = true
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "WhatsApp Pairing Server"
+
+[[workflows.workflow]]
+name = "WhatsApp Pairing Server"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node index.js"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
