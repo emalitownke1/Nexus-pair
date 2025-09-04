@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const cors = require('cors');
 const app = express();
 __path = process.cwd()
 const bodyParser = require("body-parser");
@@ -8,6 +9,12 @@ let qrRoute = require('./routers/qr');
 let pairRoute = require('./routers/pair');
 let validateRoute = require('./routers/validate');
 require('events').EventEmitter.defaultMaxListeners = 1500;
+
+// Configure CORS for Replit proxy
+app.use(cors({
+    origin: true,
+    credentials: true
+}));
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -43,11 +50,11 @@ app.get('/api/sessions', (req, res) => {
     });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`
 Deployment Successful!
 
- TREKKER-MD-Session-Server Running on http://localhost:` + PORT);
+ TREKKER-MD-Session-Server Running on http://0.0.0.0:` + PORT);
 
     // Verify environment variables
     console.log('\n=== ENVIRONMENT VALIDATION ===');
