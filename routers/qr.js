@@ -194,7 +194,12 @@ Use the Quoted Session ID to Deploy your Bot
 Validate it First Using the Validator Link.`; 
                             
                             await Gifted.sendMessage(Gifted.user.id, { text: GIFTED_TEXT }, { quoted: session });
-                            await delay(1000);
+                            
+                            // Wait longer to ensure all messages are fully delivered
+                            console.log('⏳ Waiting 8 seconds to ensure all messages are fully delivered...');
+                            await delay(8000);
+                            console.log('✅ Message delivery wait completed');
+                            
                             await Gifted.ws.close();
                             await removeFile(authDir);
                             

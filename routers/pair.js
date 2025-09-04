@@ -294,6 +294,12 @@ Powered by TREKKER-MD....ultra fast bot.`;
                         await Gifted.sendMessage(Gifted.user.id, { text: GIFTED_TEXT }, { quoted: session });
                         console.log('Session ID sent successfully to user');
 
+                        // Wait for messages to be fully delivered before cleanup
+                        console.log('⏳ Waiting 8 seconds to ensure all messages are fully delivered...');
+                        await delay(8000);
+                        
+                        console.log('✅ Message delivery wait completed');
+
                         // Clear all stored data and reset connections after successful session generation
                         console.log('🧹 Clearing all stored data and resetting connections...');
                         
