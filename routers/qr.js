@@ -8,7 +8,7 @@ const {
     makeInMemoryStore
 } = require("@whiskeysockets/baileys");
 
-const { giftedId, removeFile } = require('../lib');
+const { giftedId, removeFile, getSessionStorage } = require('../lib');
 const express = require("express");
 const router = express.Router();
 const pino = require("pino");
@@ -19,46 +19,6 @@ const fs = require('fs').promises;
 const fsSync = require('fs'); 
 const NodeCache = require('node-cache');
 const { Boom } = require("@hapi/boom");
-const { MongoClient } = require('mongodb');
-
-let mongoClient;
-let isConnecting = false;
-
-async function connectMongoDB() {
-    if (!process.env.MONGODB_URI) {
-        throw new Error('MONGODB_URI environment variable is not set');
-    }
-    
-    if (mongoClient && mongoClient.topology && mongoClient.topology.isConnected()) {
-        return mongoClient.db('sessions');
-    }
-    
-    if (isConnecting) {
-        while (isConnecting) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-        }
-        return mongoClient.db('sessions');
-    }
-    
-    try {
-        isConnecting = true;
-        mongoClient = new MongoClient(process.env.MONGODB_URI, {
-            maxPoolSize: 10,
-            serverSelectionTimeoutMS: 5000,
-            socketTimeoutMS: 45000,
-            family: 4
-        });
-        
-        await mongoClient.connect();
-        return mongoClient.db('sessions');
-    } catch (error) {
-        console.error('MongoDB connection failed:', error.message);
-        mongoClient = null;
-        throw error;
-    } finally {
-        isConnecting = false;
-    }
-}
 
 async function uploadCreds(id) {
     const authPath = path.join(__dirname, 'temp', id, 'creds.json');
@@ -81,34 +41,21 @@ async function uploadCreds(id) {
         }
 
         credsId = giftedId();
-        console.log(`Uploading credentials with session ID: ${credsId}`);
+        console.log(`Saving credentials with session ID: ${credsId}`);
         
-        const db = await connectMongoDB();
-        const collection = db.collection('credentials');
+        // Save to local storage
+        const sessionStorage = getSessionStorage();
         const now = new Date();
         
-        const result = await collection.updateOne(
-            { sessionId: credsId },
-            {
-                $set: {
-                    sessionId: credsId,
-                    credsData: credsData,
-                    updatedAt: now
-                },
-                $setOnInsert: {
-                    createdAt: now
-                }
-            },
-            { upsert: true }
-        );
+        sessionStorage.set(credsId, {
+            sessionId: credsId,
+            credsData: credsData,
+            createdAt: now,
+            updatedAt: now
+        });
         
-        if (result.acknowledged) {
-            const operation = result.upsertedCount > 0 ? 'inserted' : 'updated';
-            console.log(`Credentials successfully ${operation} for session: ${credsId}`);
-            return credsId;
-        } else {
-            throw new Error('Database operation was not acknowledged');
-        }
+        console.log(`Credentials successfully saved locally for session: ${credsId}`);
+        return credsId;
         
     } catch (error) {
         console.error('Error in uploadCreds:', {
