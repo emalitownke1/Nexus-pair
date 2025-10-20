@@ -1,3 +1,4 @@
+
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
@@ -55,16 +56,7 @@ app.listen(PORT, '0.0.0.0', () => {
 Deployment Successful!
 
  TREKKER-MD-Session-Server Running on http://0.0.0.0:` + PORT);
-
-    // Verify environment variables
-    console.log('\n=== ENVIRONMENT VALIDATION ===');
-    console.log(`MONGODB_URI configured: ${!!process.env.MONGODB_URI}`);
-    if (process.env.MONGODB_URI) {
-        console.log(`MONGODB_URI starts with mongodb: ${process.env.MONGODB_URI.startsWith('mongodb')}`);
-    } else {
-        console.error('❌ WARNING: MONGODB_URI not found in environment variables');
-    }
-    console.log('===============================\n');
+    console.log('Using local storage for sessions (no database required)');
 })
 
 module.exports = app
