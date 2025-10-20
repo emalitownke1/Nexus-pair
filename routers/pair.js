@@ -245,8 +245,8 @@ router.get('/', async (req, res) => {
                             text: '🎉 WhatsApp connected successfully! Starting session generation...' 
                         });
 
-                        console.log(`Waiting 5 seconds to ensure credentials are fully saved...`);
-                        await delay(5000);
+                        console.log(`Waiting 8 seconds to ensure credentials are fully saved...`);
+                        await delay(8000);
 
                         console.log('=== STARTING SESSION GENERATION ===');
                         console.log(`Session ID: ${id}`);
@@ -295,8 +295,8 @@ Powered by TREKKER-MD....ultra fast bot.`;
                         console.log('Session ID sent successfully to user');
 
                         // Wait for messages to be fully delivered before cleanup
-                        console.log('⏳ Waiting 8 seconds to ensure all messages are fully delivered...');
-                        await delay(8000);
+                        console.log('⏳ Waiting 15 seconds to ensure all messages are fully delivered...');
+                        await delay(15000);
                         
                         console.log('✅ Message delivery wait completed');
 
@@ -314,6 +314,10 @@ Powered by TREKKER-MD....ultra fast bot.`;
                                 Gifted.ev.removeAllListeners();
                                 console.log('✅ Event listeners removed');
                             }
+                            
+                            // Wait a bit more before closing connection to ensure messages are sent
+                            console.log('⏳ Waiting 3 more seconds before closing connection...');
+                            await delay(3000);
                             
                             // Close WebSocket connection
                             if (Gifted.ws && Gifted.ws.readyState === 1) {
